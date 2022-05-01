@@ -1,35 +1,44 @@
 ---
 import Debug from 'astro/debug';
-import { getSettings, getAllPages } from '../services/notion.js'
-
+import { getSettings, pokoContent } from '../services/notion.js'
+import Planet from '../components/Planet.jsx'
+import components from '../components/components.jsx'
 
 export async function getStaticPaths() {
 
-	const settings = await getSettings()
-	// const settings = await getAllPages()
+	// const settings = await getSettings()
+	const {settings, pages} = await pokoContent()
 
   // const organizationsStaticPaths = organizations.map(organization => {
   //   return { params: { path: organization.path }, props: { lang, organization } }
   // })
 
-  const staticPaths = [
-    { params: { path: 'blog' }, props: { settings } },
-    // ...organizationsStaticPaths,
-  ]
+  // const staticPaths = [
+  //   { params: { path: 'blog' }, props: { settings, pages } },
+  //   // ...organizationsStaticPaths,
+  // ]
 
-  return staticPaths
+  return pages.map(p => {
+    return { params: { path: p.path }, props: { settings, pages, page: p } }
+  })
 }
 
 
 const { path } = Astro.params;
 const {
   settings,
+  pages,
+  page,
   lang,
   organization, organizations,
   event, events,
   article, articles,
   area, areas,
   } = Astro.props;
+
+const MDXContent = page.content.MDXContent
 ---
 
 <Debug {settings} />
+
+<MDXContent code={`ABC`} components={{ Planet, ...components, ...settings.exports }} Layout={components.Layout} />

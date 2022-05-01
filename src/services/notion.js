@@ -7,6 +7,7 @@ import * as rt from "preact/jsx-runtime";
 import { evaluate } from "@mdx-js/mdx";
 import remarkFrontmatter from "remark-frontmatter"; // YAML and such.
 import { remarkMdxFrontmatter } from "remark-mdx-frontmatter";
+import { slugify } from "../utils/index.js";
 
 // console.log(rt);
 const runtime = rt;
@@ -27,6 +28,24 @@ const notion = new Client({
 
 // passing notion client to the option
 const n2m = new NotionToMarkdown({ notionClient: notion });
+
+async function getBlockChildren(block_id) {
+  let blocks = [];
+  let start_cursor;
+  let has_more = true;
+  while (has_more) {
+    const newBlocks = await notion.blocks.children.list({
+      block_id,
+      start_cursor,
+      page_size: 100,
+    });
+    blocks = [...blocks, ...newBlocks?.results];
+    start_cursor = newBlocks.next_cursor;
+    has_more = newBlocks.has_more;
+  }
+
+  return blocks;
+}
 
 export async function getPage() {
   const page = await notion.pages.retrieve({
@@ -145,13 +164,7 @@ const settingsB = {
   type: "block",
   block: {},
 };
-export async function getBlockChildren(block_id) {
-  const response = await notion.blocks.children.list({
-    block_id,
-    page_size: 100,
-  });
-  return response;
-}
+
 export async function getSettings() {
   const settingsPageRaw = await notion.pages.retrieve({
     page_id: import.meta.env.NOTION_SETTINGS_PAGE,
@@ -169,7 +182,7 @@ export async function getSettings() {
   const websiteName = settingsPageRaw.properties.title.title[0].plain_text;
   const sitemapRaw = settingsBlocksRaw.results.find(
     (element) =>
-      element.toggle.rich_text[0].plain_text.toLowerCase() === "sitemap"
+      element.toggle?.rich_text?.[0]?.plain_text?.toLowerCase() === "sitemap"
   );
   const sitemap = async () => {
     if (!sitemapRaw?.has_children) return null;
@@ -204,7 +217,134 @@ export async function getAllPages() {
     //   timestamp: 'last_edited_time',
     // },
   });
-  return response;
+  return response?.results;
+}
+
+function loopForParents(elem, elems) {
+  let parents = elem.parents; // array with one elem set in transformNotionPage. To be completed
+  let fullPath = elem?.path; // path inferred from codeName but lacking parents to be complete
+  let newParentId = parents?.[0]; // initialize on the first parent set in transformNotionPage
+
+  while (newParentId) {
+    const currentParentElem = elems.find((e) => e.id === newParentId);
+    fullPath = currentParentElem?.path
+      ? [currentParentElem.path, fullPath].join("/")
+      : fullPath;
+    newParentId = currentParentElem?.parents?.[0];
+    parents = newParentId ? [...parents, newParentId] : parents;
+  }
+  return { parents, fullPath };
+}
+
+function transformNotionPage(p) {
+  const contentType = p.parent.type === "workspace" ? "settings" : "page";
+  const parents = p.parent.type === "page_id" ? [p.parent.page_id] : null;
+
+  return {
+    // notionRaw: p,
+    contentType,
+    id: p.id,
+    codeName: p.properties.title.title[0].plain_text,
+    // role: null,
+    // specificity: null,
+    // markup: null,
+    content: null,
+    // props: null,
+    // layouts: null,
+    // class: null,
+    // style: null,
+    // metadata: null,
+    // children: null,
+    parents, // only first parent for now
+    slug: null,
+    path: "/",
+  };
+}
+
+async function transformSettings(p) {
+  const blocksRaw = await getBlockChildren(p.id);
+  const mdBlocks = await n2m.pageToMarkdown(p.id);
+  const mdString = n2m.toMarkdownString(mdBlocks).trim(); // trim() to remove leading (and trailing) "\n" to allow top level frontmatter
+  //   console.log({ mdString });
+  const { default: MDXContent, ...exports } = await evaluate(mdString, {
+    ...runtime,
+    remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter],
+  });
+
+  const globalStylesRaw = blocksRaw.find((b) => b?.code?.language === "css");
+  // TODO: inject global styles in a css file
+  const globalStylesString = globalStylesRaw?.code?.rich_text?.plain_text;
+
+  return {
+    ...p,
+    exports,
+  };
+}
+
+const slugifyPath = (codeName) => {
+  const pathAsArray = codeName
+    .split("/") // keep '/' in the names of the pages
+    .map(slugify) // slugify (and remove leading and trailing spaces, etc)
+    .filter((el) => el !== ""); // remove leading and trailing '/' (and empty path sections between 2 '/')
+
+  const slug = pathAsArray[pathAsArray.length - 1];
+  const path = pathAsArray.join("/");
+  return { slug, path };
+};
+
+async function transformPage(p) {
+  const { slug, path } = slugifyPath(p.codeName);
+
+  //   const blocksRaw = await getBlockChildren(p.id);
+  const mdBlocks = await n2m.pageToMarkdown(p.id);
+  const mdString = n2m.toMarkdownString(mdBlocks).trim(); // trim() to remove leading (and trailing) "\n" to allow top level frontmatter
+  //   console.log({ mdString });
+
+  const { default: MDXContent, ...otherExports } = await evaluate(mdString, {
+    ...runtime,
+    remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter],
+  });
+
+  //   return { page, blocks, mdBlocks, mdString, MDXContent, mdxEvaluated };
+
+  return {
+    ...p,
+    slug,
+    path,
+    content: {
+      MDXContent,
+    },
+  };
+}
+
+export async function pokoContent() {
+  const notionPagesRaw = await getAllPages();
+  const notionPages = notionPagesRaw?.map(transformNotionPage); // Format notion pages to keep desired data
+
+  // Isolate Settings Page
+  const settingsRaw = notionPages.find(
+    ({ contentType }) => contentType === "settings"
+  );
+  const settings = await transformSettings(settingsRaw);
+
+  // Process pages
+  const pagesRaw = notionPages.filter(
+    ({ contentType }) => contentType === "page"
+  );
+  const pagesWithOneParent = await Promise.all(
+    pagesRaw.map(await transformPage)
+  );
+  const pages = pagesWithOneParent.map((p) => {
+    const { parents, fullPath } = loopForParents(p, pagesWithOneParent);
+    return {
+      ...p,
+      parents,
+      path: fullPath,
+    };
+  });
+
+  //   return notionPagesRaw;
+  return { settings, pages };
 }
 
 function findChildrenFromParentId(pagesRaw, parentId) {
