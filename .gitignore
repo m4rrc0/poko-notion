@@ -1,6 +1,8 @@
 # build output
 dist/
 .output/
+public/user-assets
+public/user-images
 
 # dependencies
 node_modules/

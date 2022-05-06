@@ -1,0 +1,51 @@
+---
+  const {
+    setViewport = false,
+    charset = "",
+    locale = "", // e.g. en_US or fr_BE // og:locale - The locale these tags are marked up in. Of the format language_TERRITORY. Default is en_US.
+    localeAlternates = "", // og:locale:alternate - An array of other locales this page is available in.
+    ogType = "", // probably "website" or "article" or ...
+    siteName = "",
+    title = "",
+    description = "",
+    canonicalUrl = "",
+    favicon = "",
+    socialImage = "",
+    ogVideo = "", // og:video - A URL to a video file that complements this object.
+    twitterCard = "summary", // "summary", "summary_large_image", "app", or "player".
+  } = Astro.props;
+
+  // const titleComposed = title + siteName ? ` | ${siteName}` : ''
+  const titleComposed = title ? `${title}${siteName ? ` | ${siteName}` : ''}` : siteName
+
+---
+
+{charset && <meta {charset} />}
+
+{setViewport && <meta name="viewport" content="width=device-width, initial-scale=1" />}
+
+{locale && <meta property="og:locale" content={locale} />}
+{localeAlternates && localeAlternates.map(content => <meta property="og:locale:alternate" {content} />)}
+
+{ogType && <meta property="og:type" content={ogType} />}
+
+{siteName && <meta property="og:site_name" content={siteName} />}
+
+{title && 
+  <title>{titleComposed}</title>
+  <meta property="og:title" content={titleComposed} />}
+
+{description && 
+  <meta name="description" content={description} />
+  <meta property="og:description" content={description} />}
+
+{canonicalUrl &&
+  <link rel="canonical" href={canonicalUrl} />
+  <meta property="og:url" content={canonicalUrl} />}
+
+{favicon && <link rel="icon" type="image/png" sizes="32x32" href={favicon} />}
+
+{socialImage && <meta property="og:image" content={socialImage} />}
+{ogVideo && <meta property="og:video" content={ogVideo} />}
+
+{twitterCard && <meta name="twitter:card" content={twitterCard} />}

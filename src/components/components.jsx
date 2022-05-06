@@ -1,3 +1,6 @@
+// import { store } from "@services/notion.js";
+import { notionHelpers } from "@utils";
+
 const components = {
   // --- EXAMPLES FROM DOCS --- //
   // // Map `h1` (`# heading`) to use `h2`s.
@@ -12,8 +15,8 @@ const components = {
   // theme: {text: (props) => <span style={{color: 'grey'}} {...props} />},
 
   // --- ALL HTML ELEMENTS IN MD --- //
-  a: ({ style, ...props }) => (
-    <a style={{ color: "red", ...style }} {...props} />
+  a: ({ href, ...props }) => (
+    <a {...{ ...props, href: notionHelpers.convertHref(href) }} />
   ),
   blockquote: "blockquote",
   br: "br",

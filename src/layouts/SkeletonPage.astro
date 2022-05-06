@@ -1,0 +1,141 @@
+---
+// import '../styles/global.css';
+
+// import SEO from '../components/SEO.astro'
+import { Anon } from '@components'
+
+const {
+  path,
+  htmlProps = {},
+  bodyProps = {},
+  headElems: headElemsRaw,
+  bodyElems: bodyElemsRaw,
+  metadata,
+  // components,
+} = Astro.props || {}
+const {
+    lang = 'en',
+    siteName,
+    title,
+    description,
+    canonicalUrl,
+    meta, // An array of objects with properties corresponding to <meta> attributes
+    link, // An array of objects with properties corresponding to <link> attributes
+    ...restMetadata
+  } = metadata || {}
+
+// Transform something like
+// const obj = { ogType: {tag: 'meta', property: "og:type", content: 'website'} }
+// to
+// const arr = [ {'data-key': 'ogType', tag: 'meta', property: "og:type", content: 'website'} ]
+// MUST have a 'tag' prop
+const mapObjectToArray = (obj, varName) => {
+  if (typeof obj === 'undefined') return obj
+  
+  let arr = undefined;
+  if (Array.isArray(obj)) {
+    arr = obj
+  } else if (typeof obj === 'object') {
+    arr = Object
+      .entries(obj)
+      .map(([key, val]) => {
+        if (typeof val === 'object') {
+          return { ['data-key']: key, ...val }
+        }
+        return val
+      })
+  } else {
+    console.error(
+      `Error in exports ${varName} on page ${path}.\n`,
+      `${JSON.stringify(obj)} is not an array or object.`)
+    
+    return undefined
+  }
+  arr = arr.map(el => {
+      if (typeof el === 'object' && !el?.tag) {
+        console.error(`Exported element with key '${el['data-key']}' has no 'tag' property`)
+        return null
+      }
+      return el
+    }).filter(o => o)
+
+  return arr
+}
+
+const titleComposed = title ? `${title}${siteName ? ` | ${siteName}` : ''}` : siteName
+const restTags = mapObjectToArray(restMetadata, 'restMetadata')
+const headElems = mapObjectToArray(headElemsRaw, 'headElemsRaw')
+const bodyElems = mapObjectToArray(bodyElemsRaw, 'bodyElemsRaw')
+  
+
+// "metadata": {
+//       "title": "This blog is monumental",
+//       "ogType": {
+//         "tag": "meta",
+//         "property": "og:type",
+//         "content": "website"
+//       },
+//       "link": [
+//         {
+//           "rel": "canonical",
+//           "href": "https://www.poko.site/blog"
+//         },
+//         {
+//           "rel": "icon",
+//           "type": "image/png",
+//           "sizes": "32x32",
+//           "href": "/favicon.png"
+//         }
+//       ]
+//     }
+
+---
+
+<html {lang} {...htmlProps}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    {titleComposed && 
+      <title>{titleComposed}</title>
+      <meta property="og:title" content={titleComposed} />}
+    
+    {description && 
+      <meta name="description" content={description} />
+      <meta property="og:description" content={description} />}
+
+    {canonicalUrl &&
+      <link rel="canonical" href={canonicalUrl} />
+      <meta property="og:url" content={canonicalUrl} />}
+
+    {Array.isArray(meta) && meta.map(el => (
+      <meta {...el} />
+    ))}
+
+    {Array.isArray(link) && link.map(el => (
+      <link {...el} />
+    ))}
+
+    {Array.isArray(restTags) && restTags.length > 0 && restTags.map(el => (
+      <Anon {...el} />
+    ))}
+
+    {Array.isArray(headElems) && headElems.length > 0 && headElems.map(el => (
+      <Anon {...el} />
+    ))}
+
+    <link rel="stylesheet" href="/user-styles.css" />
+
+    <slot name="head" />
+  </head>
+  <body {...bodyProps}>
+    <slot />
+    <slot name="body"/>
+
+    {Array.isArray(bodyElems) && bodyElems.length > 0 && bodyElems.map(El => typeof El === 'object' ? (
+      <Anon {...El} />
+    ) : <El />)}
+
+    <!-- <script src="/assets/js/instant.page.js" defer type="module"></script> -->
+  </body>
+</html>

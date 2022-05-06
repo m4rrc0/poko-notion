@@ -1,28 +1,43 @@
 ---
 import Debug from 'astro/debug';
-import { getSettings, pokoContent } from '../services/notion.js'
+import { store, populateStore } from '@services/notion.js'
+import { notionHelpers } from "@utils";
+import { SkeletonPage } from '@layouts'
 import Planet from '../components/Planet.jsx'
-import components from '../components/components.jsx'
+import pokoComponents from '../components/components.jsx'
 
 export async function getStaticPaths() {
 
+  await populateStore()
+  // const { settings, pages } = store || {}
+  const settings = store.get("settings");
+  const pages = store.get("pages");
+
+  // await gun.get("pages")
+  // .map()
+  // .once(function (v) {
+  //   console.log({v});
+  //   pages = [...pages, v];
+  // });
+
+
 	// const settings = await getSettings()
-	const {settings, pages} = await pokoContent()
+	// const {settings, pages} = await pokoContent()
 
   // const organizationsStaticPaths = organizations.map(organization => {
-  //   return { params: { path: organization.path }, props: { lang, organization } }
+    //   return { params: { path: organization.path }, props: { lang, organization } }
   // })
 
   // const staticPaths = [
-  //   { params: { path: 'blog' }, props: { settings, pages } },
+    //   { params: { path: 'blog' }, props: { settings, pages } },
   //   // ...organizationsStaticPaths,
   // ]
 
   return pages.map(p => {
-    return { params: { path: p.path }, props: { settings, pages, page: p } }
+    return { params: { path: p.path === '' ? undefined : p.path }, props: { settings, pages, page: p } }
   })
+  // return [{ params: { path: 'blog' }, props: { pages } }]
 }
-
 
 const { path } = Astro.params;
 const {
@@ -30,15 +45,31 @@ const {
   pages,
   page,
   lang,
-  organization, organizations,
-  event, events,
-  article, articles,
-  area, areas,
   } = Astro.props;
 
-const MDXContent = page.content.MDXContent
+  // console.log(pages)
+
+const { exports, MDXContent } = page || {}
+const metadata = {
+  ...settings?.exports?.metadata,
+  ...exports?.metadata,
+}
+
+// console.log(settings.headString)
+
+const components = {Planet, ...pokoComponents, ...settings.exports, ...exports} // merge from poko-notion, settings, parents, page
+const props = {
+  code: `ABC`,
+  Layout: pokoComponents.Layout,
+  ...pokoComponents,
+  ...settings.exports,
+  ...exports
+} // merge from poko-notion, settings, parents, page
 ---
 
-<Debug {settings} />
+<SkeletonPage {...{ path, ...exports, metadata, components}}>
+  <!-- <Debug {page} /> -->
+  <Fragment slot="head" set:html={settings.headString} />
 
-<MDXContent code={`ABC`} components={{ Planet, ...components, ...settings.exports }} Layout={components.Layout} />
+  <MDXContent {...{ ...props, notionHelpers, components }} />
+</SkeletonPage>
