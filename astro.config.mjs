@@ -7,6 +7,7 @@ import { defineConfig } from "astro/config";
 // import react from "@astrojs/react";
 import preact from "@astrojs/preact";
 // import solid from "@astrojs/solid-js";
+// import fetchAhead from "./integrations/fetch-ahead/index.mjs";
 
 // @type-check enabled!
 // VSCode and other TypeScript-enabled text editors will provide auto-completion,
@@ -21,6 +22,7 @@ export default defineConfig({
     // react(),
     preact(),
     // solid(),
+    // fetchAhead(),
   ],
   vite: {
     // NOTE: necessary for astro-icon apparently (https://github.com/natemoo-re/astro-icon)

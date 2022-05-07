@@ -1,4 +1,5 @@
 import fs, { writeFile } from "fs";
+
 import https from "https";
 import { Client } from "@notionhq/client";
 import { NotionToMarkdown } from "notion-to-md";
@@ -17,6 +18,8 @@ import rehypeSlug from "rehype-slug";
 import StreamZip from "node-stream-zip";
 import NodeCache from "node-cache";
 import { slugify } from "@utils";
+
+const fsPromises = fs.promises;
 
 // --- GLOBAL CONTANTS --- //
 const dirUserFiles = "user-assets";
@@ -72,143 +75,172 @@ const parseFileUrl = (url) => {
   return { filename, extension };
 };
 
-const createDir = async (dir, purge = false) => {
-  const systemPath = `${process.cwd()}/${dir}`;
+// const createDir = async (dir, purge = false) => {
+//   const systemPath = `${process.cwd()}/${dir}`;
 
-  if (purge) {
-    await fs.rm(systemPath, { recursive: true }, async (err) => {
-      if (err) {
-        console.info(`${dir} could not be deleted.`, err);
-        // throw err;
-      } else {
-        console.info(`${dir} has been deleted.`);
-      }
+//   console.log("\n----- createDir -----\n", process.cwd(), dir);
 
-      await fs.mkdir(systemPath, (err) => {
-        if (err) {
-          console.info(`${dir} could not be created.`, err);
-          // throw err;
-        } else {
-          console.info(`${dir} was created.`);
-        }
-      });
-    });
-  } else if (!fs.existsSync(systemPath)) {
-    console.info(`Directory ${dir} already exists.`);
+//   if (purge) {
+//     await fs.rm(systemPath, { recursive: true }, async (err) => {
+//       if (err) {
+//         console.info(`${dir} could not be deleted.`, err);
+//         // throw err;
+//       } else {
+//         console.info(`${dir} has been deleted.`);
+//       }
 
-    await fs.mkdir(systemPath, (err) => {
-      if (err) {
-        console.info(`${dir} could not be created.`, err);
-        // throw err;
-      } else {
-        console.info(`${dir} was created.`);
-      }
-    });
-  }
-};
+//       await fs.mkdir(systemPath, (err) => {
+//         if (err) {
+//           console.info(`${dir} could not be created.`, err);
+//           // throw err;
+//         } else {
+//           console.info(`${dir} was created.`);
+//         }
+//       });
+//     });
+//   } else if (!fs.existsSync(systemPath)) {
+//     console.info(`Directory ${dir} already exists.`);
 
-const downloadFilesAndExtract = async (
-  blocks,
-  relativeDir,
-  purgePassed = false
-) => {
+//     await fs.mkdir(systemPath, (err) => {
+//       if (err) {
+//         console.info(`${dir} could not be created.`, err);
+//         // throw err;
+//       } else {
+//         console.info(`${dir} was created.`);
+//       }
+//     });
+//   }
+// };
+
+// const downloadFilesAndExtract = async (
+const downloadFilesAndExtract = (blocks, dirName, purgePassed = true) => {
   // TODO: see if working with [astro-imagetools](https://github.com/RafidMuhymin/astro-imagetools), reply to https://discord.com/channels/830184174198718474/855126849159954492/958605946177863730
 
   let purge = purgePassed;
+  const projectPathDir = `public/${dirName}`;
 
-  const mapFilename = "assets-map.json";
-  const systemPathToMap = `${process.cwd()}/public/${relativeDir}/${mapFilename}`;
-  let oldMap = null;
-  let oldMapString = null;
-  // 1. fetch old mapping of assets
-  if (fs.existsSync(systemPathToMap) && !purge) {
-    await fs.readFile(systemPathToMap, (err, data) => {
-      if (err) throw err;
-      oldMapString = data;
-      oldMap = JSON.parse(data);
-    });
+  // const mapFilename = "assets-map.json";
+  // const projectPathToMap = `${projectPathDir}/${mapFilename}`;
+  // const systemPathToMap = `${process.cwd()}/${projectPathToMap}`;
+  // let oldMap = null;
+  // let oldMapString = null;
+  // // 1. fetch old mapping of assets
+  // if (fs.existsSync(systemPathToMap) && !purge) {
+  //   await fs.readFile(systemPathToMap, (err, data) => {
+  //     if (err) throw err;
+  //     oldMapString = data;
+  //     oldMap = JSON.parse(data);
+  //   });
+  // }
+  // // If no oldMap, we don't know what is good and what is not, so we'll clean up.
+  // if (!oldMapString) purge = true;
+
+  // // 2. create map of files (last_edited_time, sitePath)
+  // const newMap = blocks.reduce((prev, curr) => {
+  //   const prevSame = prev[curr.sitePath];
+  //   if (prevSame)
+  //     console.warn(
+  //       `--- /!\ WARNING: multiple files referencing ${curr.sitePath}`
+  //     );
+  //   if (prevSame && prevSame > curr.last_edited_time) return prev;
+  //   return {
+  //     ...prev,
+  //     [curr.sitePath]: curr.last_edited_time,
+  //   };
+  // }, {});
+  // // console.log({ blocks, newMap });
+  // const newMapString = JSON.stringify(newMap);
+
+  if (purge) {
+    // await overWriteFileOrDir(projectPathDir, undefined);
+    overWriteFileOrDir(projectPathDir, undefined);
   }
-  // If no oldMap, we don't know what is good and what is not, so we'll clean up.
-  if (!oldMapString) purge = true;
+  // else if (newMapString === oldMapString) {
+  //   // Skip if !purge and maps are he same
+  //   return null;
+  // } else if (typeof oldMap === "object") {
+  //   // 3. compare maps. if files on old map are not on the new map, remove them
+  //   // await Promise.all(
+  //   //   Object.keys(oldMap).map(async (sitePathOld) => {
+  //   //     if (!newMap.hasOwnProperty(sitePathOld)) {
+  //   //       await overWriteFileOrDir(`public${sitePathOld}`);
+  //   //     }
+  //   //   })
+  //   // );
+  //   Object.keys(oldMap).map((sitePathOld) => {
+  //     if (!newMap.hasOwnProperty(sitePathOld)) {
+  //       overWriteFileOrDir(`public${sitePathOld}`);
+  //     }
+  //   });
+  // }
 
-  // 2. create map of files (last_edited_time, sitePath)
-  const newMap = blocks.reduce((prev, curr) => {
-    const prevSame = prev[curr.sitePath];
-    if (prevSame)
-      console.warn(
-        `--- /!\ WARNING: multiple files referencing ${curr.sitePath}`
-      );
-    if (prevSame && prevSame > curr.last_edited_time) return prev;
-    return {
-      ...prev,
-      [curr.sitePath]: curr.last_edited_time,
-    };
-  }, {});
-  const newMapString = JSON.stringify(newMap);
-
-  // Skip if maps are he same
-  if (newMapString === oldMapString && !purge) {
-    return null;
-  }
-
-  if (purge)
-    await overWriteFileOrDir(
-      `${process.cwd()}/public/${relativeDir}`,
-      null,
-      true
-    );
-
-  // 3. compare maps. if files on old map are not on the new map, remove them
-  await Promise.all(
-    Object.keys(oldMap).map(async (sitePathOld) => {
-      if (!newMap.hasOwnProperty(sitePathOld)) {
-        await overWriteFileOrDir(`${process.cwd()}/public${sitePathOld}`);
-      }
-    })
-  );
-  await Promise.all(
-    blocks.map(async (block) => {
+  // await Promise.all(
+  //   blocks.map(async (block) => {
+  blocks.map(
+    (block) => {
       const { filename, extension, sitePath } = block;
 
-      const projectRootPathToFile = `public/${relativeDir}/${filename}`;
-      const systemPathToFile = `${process.cwd()}/${projectRootPathToFile}`;
+      const projectPathToFile = `${projectPathDir}/${filename}`;
+      const systemPathToFile = `${process.cwd()}/${projectPathToFile}`;
 
       // Early return if the file is already the newest version
-      if (
-        newMap.sitePath === oldMap.sitePath &&
-        fs.existsSync(systemPathToFile) &&
-        !purge
-      ) {
-        console.info(`File ${filename} is already up-to-date.`);
-        return null;
-      }
+      // if (
+      //   !purge &&
+      //   newMap?.[sitePath] === oldMap?.[sitePath] &&
+      //   fs.existsSync(systemPathToFile)
+      // ) {
+      //   console.info(`File ${filename} is already up-to-date.`);
+      //   return null;
+      // }
 
       // 4. for each file: if new file OR if new date > old date delete and download new
-      await overWriteFileOrDir(projectRootPathToFile, "", true);
+      // await overWriteFileOrDir(projectPathToFile, "", true);
+      // overWriteFileOrDir(projectPathToFile, "", true);
 
       https.get(block.urlNotion, (res) => {
         const writeStream = fs.createWriteStream(systemPathToFile);
 
         res.pipe(writeStream);
 
-        writeStream.on("finish", async () => {
+        // writeStream.on("finish", async () => {
+        writeStream.on("finish", () => {
           writeStream.close();
           console.info(`File ${filename} downloaded successfully.`);
 
           if (extension === ".zip") {
-            // const zip = new StreamZip.async({ file: 'archive.zip' });
-            const zip = new StreamZip.async({ file: systemPathToFile });
-            const count = await zip.extract(null, `./public/${relativeDir}`);
-            console.info(`Extracted ${count} entries`);
-            await zip.close();
+            // const zip = new StreamZip.async({ file: systemPathToFile });
+            // const count = await zip.extract(null, `./${projectPathDir}`);
+            // console.info(`Extracted ${count} entries`);
+            // await zip.close();
+
+            // Sync Callback version
+            const zip = new StreamZip({ file: systemPathToFile });
+            zip.on("ready", () => {
+              zip.extract(null, `./${projectPathDir}`, (err, count) => {
+                console.log(
+                  err ? "Extract error" : `Extracted ${count} entries`
+                );
+                zip.close();
+              });
+            });
+            zip.on("error", (err) => {
+              console.error(`Error unziping file ${projectPathDir}.\n`, err);
+            });
           }
         });
+        // This is here incase any errors occur
+        writeStream.on("error", function (err) {
+          console.error(
+            `Error writing stream for file ${projectPathDir}.\n`,
+            err
+          );
+        });
       });
-    })
+    } //)
   );
 
   // Remove old Map and create new
-  await overWriteFileOrDir(systemPathToMap, newMapString);
+  // await overWriteFileOrDir(projectPathToMap, newMapString);
 };
 
 const writeMyFile = async (localPath, str) => {
@@ -220,50 +252,60 @@ const writeMyFile = async (localPath, str) => {
   });
 };
 
-const overWriteFileOrDir = async (projectRootPath, str, removeOnly = false) => {
-  const isDir = typeof str === "undefined" || typeof str === "null";
-  const systemPath = `${process.cwd()}/${projectRootPath}`;
+// async function overWriteFileOrDir(
+function overWriteFileOrDir(pathFromProjectRoot, str, removeOnly = false) {
+  // console.log(
+  //   "\n----- overWriteFileOrDir -----\n",
+  //   process.cwd(),
+  //   pathFromProjectRoot
+  // );
 
-  async function write() {
+  const isDir = typeof str === "undefined";
+  const systemPath = `${process.cwd()}/${pathFromProjectRoot}`;
+
+  // async function write() {
+  function write() {
     if (removeOnly) return null;
 
-    if (isDir) {
-      await fs.mkdir(systemPath, (err) => {
-        if (err) {
-          console.info(`${projectRootPath} could not be created.`, err);
-          // throw err;
-        } else {
-          console.info(`${projectRootPath} was created.`);
-        }
-      });
-    } else {
-      const s = typeof str === "string" ? str : JSON.stringify(str);
-      await writeFile(systemPath, s, (err) => {
-        if (err) {
-          console.error(`${projectRootPath} could not be created.`, err);
-        } else {
-          console.log(`${projectRootPath} created successfully`);
-        }
-      });
+    try {
+      if (isDir) {
+        // await fsPromises.mkdir(systemPath);
+        fs.mkdirSync(systemPath);
+      } else {
+        const s = typeof str === "string" ? str : JSON.stringify(str);
+        // await fsPromises.writeFile(systemPath, s);
+        fs.writeFileSync(systemPath, s);
+      }
+      console.info(`${pathFromProjectRoot} was created.`);
+    } catch (err) {
+      console.info(`${pathFromProjectRoot} could not be created.`, err);
+      throw err;
     }
   }
 
+  // Early return: Does not already exists && not remove only
   if (!fs.existsSync(systemPath) && !removeOnly) {
-    await write();
+    // await write();
+    write();
     return null;
   }
 
-  await fs.rm(systemPath, { recursive: isDir }, async (err) => {
-    if (err) {
-      console.info(`${projectRootPath} could not be deleted.`, err);
-      // throw err;
-    } else {
-      console.info(`${projectRootPath} has been deleted.`);
+  if (fs.existsSync(systemPath)) {
+    try {
+      // await fsPromises.rm(systemPath, { recursive: isDir });
+      fs.rmSync(systemPath, { recursive: isDir });
+      console.info(`${pathFromProjectRoot} has been deleted.`);
+    } catch (err) {
+      console.info(`${pathFromProjectRoot} could not be deleted.`, err);
+      throw err;
     }
+  }
 
-    await write();
-  });
-};
+  if (!removeOnly) {
+    // await write();
+    write();
+  }
+}
 
 // --- POPULATE LOCAL STORE --- //
 
@@ -274,6 +316,8 @@ export async function populateStore() {
   const notionPages = await Promise.all(
     notionPagesRaw?.map(await transformNotionPage)
   ); // Format notion pages to keep desired data
+
+  // TODO: remove pages or DBs with a leading '_' in codeName
 
   // Merge blockCopies needed for download
   const { imageBlocks, fileBlocks } = notionPages.reduce(
@@ -292,12 +336,12 @@ export async function populateStore() {
   // Download files and images
   if (fileBlocks.length > 0) {
     console.info("--- Downloading Files ---");
-    await createDir(`public/${dirUserFiles}`);
+    // await createDir(`public/${dirUserFiles}`);
     await downloadFilesAndExtract(fileBlocks, dirUserFiles);
   }
   if (imageBlocks.length > 0) {
     console.info("--- Downloading Images ---");
-    await createDir(`public/${dirUserImages}`);
+    // await createDir(`public/${dirUserImages}`);
     await downloadFilesAndExtract(imageBlocks, dirUserImages);
   }
 
@@ -308,7 +352,7 @@ export async function populateStore() {
 
   // Process pages
   const pagesWithOneParent = notionPages.filter(
-    ({ contentType }) => contentType === "page"
+    ({ contentType }) => contentType === "page" || contentType === "collection"
   );
 
   console.info("--- Linking all parent pages ---");
@@ -337,6 +381,7 @@ export async function populateStore() {
       path: page.path,
     };
   });
+  // console.log(paths);
 
   // Write JSON file for now, because store is not preserved during the whole build
   // await writeMyFile("temp/paths.json", JSON.stringify(paths));
@@ -455,11 +500,112 @@ async function getChildrenRecursively(blocks) {
 // --- TRANSFORM DATA --- //
 
 async function transformNotionPage(p) {
-  const contentType = p.parent.type === "workspace" ? "settings" : "page";
-  const parents = p.parent.type === "page_id" ? [p.parent.page_id] : null; // /!\ Can be the settings page
-  const codeName = p.properties.title.title
-    .map(({ plain_text }) => plain_text)
-    .join("");
+  // if (!p?.type?.title?.title) {
+  //   console.log(p);
+  //   return null;
+  // }
+  // if (!p?.properties?.title?.title) {
+  //   console.log(p);
+  //   return null;
+  // }
+
+  // const inlineDB = {
+  //   object: 'database',
+  //   id: '9a96fcb2-b23e-47a2-83e4-c4eb15a5bed2',
+  //   cover: null,
+  //   icon: null,
+  //   created_time: '2022-05-06T13:30:00.000Z',
+  //   created_by: { object: 'user', id: 'e3f69e77-b675-41af-8d63-368515a60dec' },
+  //   last_edited_by: { object: 'user', id: 'e3f69e77-b675-41af-8d63-368515a60dec' },
+  //   last_edited_time: '2022-05-06T13:33:00.000Z',
+  //   title: [
+  //     {
+  //       type: 'text',
+  //       text: [Object],
+  //       annotations: [Object],
+  //       plain_text: 'Inline Blog',
+  //       href: null
+  //     }
+  //   ],
+  //   properties: {
+  //     Tags: {
+  //       id: 'H%5DLs',
+  //       name: 'Tags',
+  //       type: 'multi_select',
+  //       multi_select: [Object]
+  //     },
+  //     Name: { id: 'title', name: 'Name', type: 'title', title: {} }
+  //   },
+  //   parent: { type: 'page_id', page_id: 'a234584e-99da-4f5c-8a23-a4c3ef9ca545' },
+  //   url: 'https://www.notion.so/9a96fcb2b23e47a283e4c4eb15a5bed2',
+  //   archived: false
+  // }
+
+  // const collectionItem = {
+  //   object: 'page',
+  //   id: 'a18eac77-f1f0-4623-b861-e53d1f93a959',
+  //   created_time: '2022-05-06T13:30:00.000Z',
+  //   last_edited_time: '2022-05-06T14:14:00.000Z',
+  //   created_by: { object: 'user', id: 'e3f69e77-b675-41af-8d63-368515a60dec' },
+  //   last_edited_by: { object: 'user', id: 'e3f69e77-b675-41af-8d63-368515a60dec' },
+  //   cover: null,
+  //   icon: null,
+  //   parent: {
+  //     type: 'database_id',
+  //     database_id: '9a96fcb2-b23e-47a2-83e4-c4eb15a5bed2'
+  //   },
+  //   archived: false,
+  //   properties: {
+  //     Tags: { id: 'H%5DLs', type: 'multi_select', multi_select: [Array] },
+  //     Name: { id: 'title', type: 'title', title: [Array] }
+  //   },
+  //   url: 'https://www.notion.so/Inline-Article-a18eac77f1f04623b861e53d1f93a959'
+  // }
+  // const contentType = () => {
+  //   let ct = "";
+  //   switch (true) {
+  //     case p.parent.type === "workspace":
+  //       ct = "settings";
+  //       break;
+  //     case p.object === "database": // DB
+  //       // No way to know if it is inline from here.
+  //       // It is important because we need to know if we need to include the DB in the page generation process and its name in the path of children.
+  //       // We could also have 2 collections on the same page so maybe decide a way to skip a DB (or page) name.
+  //       // Ex; leading '_' in the name if it is to be skipped
+  //       // NOTE: we also need a way to express if we need to generate a page for children (ex testimonials)
+  //       ct = "collection";
+  //       break;
+
+  //     default:
+  //       ct = "page";
+  //       break;
+  //   }
+  //   return ct;
+  // };
+  const contentType =
+    p.parent.type === "workspace"
+      ? "settings"
+      : p.object === "database"
+      ? "collection"
+      : "page";
+  // Direct Parent of Page
+  const parent = p?.parent?.page_id || p?.parent?.database_id;
+  const parents = parent ? [parent] : null; // /!\ Can be the settings page or a hidden page or DB (leading '_')
+  // Find Title of the page
+  let dbItemTitlePropName;
+  if (p.parent.type === "database_id") {
+    // A collection item
+    Object.entries(p.properties).forEach(([propName, propVal]) => {
+      if (propVal.type === "title") dbItemTitlePropName = propName;
+    });
+  }
+  const title =
+    p?.title || // database
+    p?.properties?.title?.title || // page
+    p?.properties?.[dbItemTitlePropName]?.title; // collection item
+  // CodeName
+  const codeName = title.map(({ plain_text }) => plain_text).join("");
+  // Slug and Path
   const { slug, path } =
     contentType === "settings"
       ? { slug: null, path: null }
@@ -493,6 +639,9 @@ async function transformNotionPage(p) {
 
   const blocksLevel1 = await getBlockChildren(p.id);
   const { blocks, blocksCopy } = await getChildrenRecursively(blocksLevel1);
+
+  // HERE
+  console.log({ codeName, p });
 
   // -------EXPERIMENTS ----------
   let nb;
@@ -604,6 +753,7 @@ async function transformNotionPage(p) {
     ...npFormatted,
     exports,
     MDXContent,
+    blocks,
     globalStylesString,
     headString,
     // usefull only to retrieve higher
@@ -612,6 +762,8 @@ async function transformNotionPage(p) {
 }
 
 function loopForParents(elem, elems) {
+  // TODO: how to properly remove _name pages and dBs from the output tree
+
   let parents = elem.parents; // array with one elem set in transformNotionPage. To be completed
   let fullPath = elem?.path; // path inferred from codeName but lacking parents to be complete
   let newParentId = parents?.[0]; // initialize on the first parent set in transformNotionPage
@@ -657,242 +809,3 @@ function transformBlock(blockRaw) {
 }
 
 // --- --------------- --- //
-
-// export async function getSettings() {
-//   const settingsPageRaw = await notion.pages.retrieve({
-//     page_id: import.meta.env.NOTION_SETTINGS_PAGE,
-//   });
-//   const settingsBlocksRaw = await notion.blocks.children.list({
-//     block_id: import.meta.env.NOTION_SETTINGS_PAGE,
-//     page_size: 100,
-//   });
-//   //   const settings = {
-//   //     contentType: "settings",
-//   //     id: settingsPageRaw.id,
-//   //     codeName: "settings",
-//   //   };
-//   const SettingsPageId = settingsPageRaw.id;
-//   const websiteName = settingsPageRaw.properties.title.title[0].plain_text;
-//   const sitemapRaw = settingsBlocksRaw.results.find(
-//     (element) =>
-//       element.toggle?.rich_text?.[0]?.plain_text?.toLowerCase() === "sitemap"
-//   );
-//   const sitemap = async () => {
-//     if (!sitemapRaw?.has_children) return null;
-//     const children = await getBlockChildren(sitemapRaw.id);
-
-//     // const pages = await Promise.all(
-//     //   children.results.map(async (childPageBlock) => {
-//     //     // if (!childPageBlock?.type === "child_page") return null;
-//     //     const pageName = childPageBlock.child_page.title;
-//     //     const pageRaw = await notion.search({ query: pageName });
-//     //     const page = pageRaw?.results?.[0];
-
-//     //     return page;
-//     //   })
-//     // );
-
-//     return children.results;
-//     return pages.filter((p) => p);
-//   };
-
-//   //   console.log(settingsBlocks);
-
-//   //   return settingsBlocksRaw
-//   return sitemap();
-// }
-
-// export async function pokoContent() {
-//   const notionPagesRaw = await getAllNotionPages();
-//   const notionPages = notionPagesRaw?.map(transformNotionPage); // Format notion pages to keep desired data
-
-//   // Isolate Settings Page
-//   const settingsRaw = notionPages.find(
-//     ({ contentType }) => contentType === "settings"
-//   );
-//   const settings = await transformSettings(settingsRaw);
-
-//   // Process pages
-//   const pagesRaw = notionPages.filter(
-//     ({ contentType }) => contentType === "page"
-//   );
-//   const pagesWithOneParent = await Promise.all(
-//     pagesRaw.map(await transformPage)
-//   );
-//   const pages = pagesWithOneParent.map((p) => {
-//     const { parents, fullPath } = loopForParents(p, pagesWithOneParent);
-//     return {
-//       ...p,
-//       parents,
-//       path: fullPath,
-//     };
-//   });
-
-//   //   return notionPagesRaw;
-//   return { settings, pages };
-// }
-
-// function findChildrenFromParentId(pagesRaw, parentId) {
-//   const filtered = pagesRaw.filter((pageRaw) => {
-//     return (
-//       pageRaw?.parent?.type === "page_id" &&
-//       pageRaw?.parent?.page_id === parentId
-//     );
-//   });
-//   return filtered;
-// }
-
-// export async function getPage() {
-//   const page = await notion.pages.retrieve({
-//     page_id: import.meta.env.NOTION_HOMEPAGE_ID,
-//   });
-//   const blocks = await notion.blocks.children.list({
-//     block_id: import.meta.env.NOTION_HOMEPAGE_ID,
-//     page_size: 100,
-//   });
-
-//   const mdBlocks = await n2m.pageToMarkdown(import.meta.env.NOTION_HOMEPAGE_ID);
-//   let mdString = n2m.toMarkdownString(mdBlocks);
-//   // remove leading (and trailing) \n
-//   //   mdString = mdString.replace(/^\s+|\s+$/g, "");
-//   mdString = mdString.trim();
-//   // console.log({ mdString });
-//   //   const mdxCompiled = await compile(str);
-//   const { default: MDXContent, ...mdxEvaluated } = await evaluate(mdString, {
-//     ...runtime,
-//     remarkPlugins: [
-//       [
-//         remarkFrontmatter,
-//         // {
-//         //   type: "yaml",
-//         //   fence: { open: "---", close: "---" },
-//         //   //   anywhere: true,
-//         // },
-//       ],
-//       //   remarkFrontmatter,
-//       remarkMdxFrontmatter,
-//     ],
-//   });
-
-//   //   MDXContent(props)
-
-//   return { page, blocks, mdBlocks, mdString, MDXContent, mdxEvaluated };
-// }
-
-// const myPage = await notion.databases.query({
-//     database_id: "897e5a76-ae52-4b48-9fdf-e71f5945d1af",
-//     filter: {
-//       property: "Landmark",
-//       text: {
-//         contains: "Bridge",
-//       },
-//     },
-//   })
-
-// const str = `export const Thing = () => <>Awesome revelation!</>
-
-// # Hello, <Thing />`;
-
-// export async function md() {
-//   const mdBlocks = await n2m.pageToMarkdown(import.meta.env.NOTION_HOMEPAGE_ID);
-//   const mdString = n2m.toMarkdownString(mdBlocks);
-//   //   const mdxCompiled = await compile(str);
-//   const mdxEvaluated = await evaluate(mdString, { ...runtime });
-
-//   //   console.log({ mdxEvaluated });
-
-//   return { mdBlocks, mdString, mdxEvaluated };
-// }
-
-// export async function mdx() {
-//   const mdBlocks = await n2m.pageToMarkdown(import.meta.env.NOTION_HOMEPAGE_ID);
-//   const mdString = n2m.toMarkdownString(mdBlocks);
-//   const mdxString = await compile(mdString);
-//   return mdxString;
-// }
-
-// async function main() {
-//   const compiled = await compile(await fs.readFile("example.mdx"));
-//   console.log(String(compiled));
-// }
-
-// const settingsP = {
-//   object: "page",
-//   id: "688cd451-1765-45e0-b308-7704b8637670",
-//   created_time: "2022-04-30T07:22:00.000Z",
-//   last_edited_time: "2022-04-30T07:28:00.000Z",
-//   created_by: {
-//     object: "user",
-//     id: "e3f69e77-b675-41af-8d63-368515a60dec",
-//   },
-//   last_edited_by: {
-//     object: "user",
-//     id: "e3f69e77-b675-41af-8d63-368515a60dec",
-//   },
-//   cover: null,
-//   icon: null,
-//   parent: {
-//     type: "workspace",
-//     workspace: true,
-//   },
-//   archived: false,
-//   properties: {
-//     title: {
-//       id: "title",
-//       type: "title",
-//       title: [
-//         {
-//           type: "text",
-//           text: {
-//             content: "Poko Website",
-//             link: null,
-//           },
-//           annotations: {
-//             bold: false,
-//             italic: false,
-//             strikethrough: false,
-//             underline: false,
-//             code: false,
-//             color: "default",
-//           },
-//           plain_text: "Poko Website",
-//           href: null,
-//         },
-//       ],
-//     },
-//   },
-//   url: "https://www.notion.so/Poko-Website-688cd451176545e0b3087704b8637670",
-// };
-// const settingsB = {
-//   object: "list",
-//   results: [
-//     {
-//       object: "block",
-//       id: "ae7ea4fe-05f9-4de4-95f3-0e504bc2d9dc",
-//       created_time: "2022-04-30T07:27:00.000Z",
-//       last_edited_time: "2022-04-30T07:28:00.000Z",
-//       created_by: [Object],
-//       last_edited_by: [Object],
-//       has_children: true,
-//       archived: false,
-//       type: "toggle",
-//       toggle: [Object],
-//     },
-//     {
-//       object: "block",
-//       id: "423c1796-8759-424f-a63b-55bdae6be34c",
-//       created_time: "2022-04-30T07:28:00.000Z",
-//       last_edited_time: "2022-04-30T07:28:00.000Z",
-//       created_by: [Object],
-//       last_edited_by: [Object],
-//       has_children: false,
-//       archived: false,
-//       type: "paragraph",
-//       paragraph: [Object],
-//     },
-//   ],
-//   next_cursor: null,
-//   has_more: false,
-//   type: "block",
-//   block: {},
-// };

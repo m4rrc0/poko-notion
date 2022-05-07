@@ -68,7 +68,7 @@ const props = {
 ---
 
 <SkeletonPage {...{ path, ...exports, metadata, components}}>
-  <!-- <Debug {page} /> -->
+  <Debug {page} />
   <Fragment slot="head" set:html={settings.headString} />
 
   <MDXContent {...{ ...props, notionHelpers, components }} />
