@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
       "@src/*": ["src/*"],
@@ -17,7 +18,8 @@
       "@services": ["src/services/index.js"],
       "@styles/*": ["src/styles/*"],
       "@utils/*": ["src/utils/*"],
-      "@utils": ["src/utils"]
+      "@utils": ["src/utils/index.mjs"],
+      "@poko": ["src/_data/poko.json"]
     }
   }
 }

@@ -17,7 +17,7 @@ import rehypeAttr from "rehype-attr";
 import rehypeSlug from "rehype-slug";
 import StreamZip from "node-stream-zip";
 import NodeCache from "node-cache";
-import { slugify } from "@utils";
+import { slugify } from "@utils/index.mjs";
 
 const fsPromises = fs.promises;
 
@@ -350,6 +350,8 @@ export async function populateStore() {
     ({ contentType }) => contentType === "settings"
   );
 
+  const tree = getPageTreeRecursively(settings, notionPages);
+
   // Process pages
   const pagesWithOneParent = notionPages.filter(
     ({ contentType }) => contentType === "page" || contentType === "collection"
@@ -391,10 +393,12 @@ export async function populateStore() {
   // store.pages = pages;
   // store.paths = paths;
   store.set("settings", settings);
+  store.set("tree", tree);
   store.set("pages", pages);
   store.set("paths", paths);
 
   process.env.POKO_SETTINGS = JSON.stringify(settings);
+  process.env.POKO_TREE = JSON.stringify(tree);
   process.env.POKO_PAGES = JSON.stringify(pages);
   process.env.POKO_PATHS = JSON.stringify(paths);
 
@@ -412,7 +416,7 @@ export async function populateStore() {
 
   console.info("--- READY ---");
 
-  return { settings, pages };
+  return { settings, tree, pages };
 }
 
 // --- FETCH DATA --- //
@@ -457,7 +461,7 @@ async function getBlockChildren(block_id) {
   return blocks;
 }
 
-async function getChildrenRecursively(blocks) {
+async function getBlockChildrenRecursively(blocks, allPages) {
   const bc = {
     file: [],
     image: [],
@@ -467,8 +471,7 @@ async function getChildrenRecursively(blocks) {
 
   const blocksPopulated = await Promise.all(
     blocks.map(async (blockRaw) => {
-      const block = transformBlock(blockRaw);
-      const md = await n2m.blockToMarkdown(block);
+      const block = await transformBlock(blockRaw, allPages);
 
       if (block.type === "file") bc.file = [...bc.file, block];
       if (block.type === "image") bc.image = [...bc.image, block];
@@ -476,30 +479,55 @@ async function getChildrenRecursively(blocks) {
       if (block?.code?.language === "html")
         bc.codeHtml = [...bc.codeHtml, block];
 
-      if (!block.has_children)
-        return { ...block, md, parent: md, children: null };
+      if (!block.has_children) return { ...block, children: null };
 
       const children = await getBlockChildren(block.id);
       const {
         blocksCopy: { file, image, codeCss, codeHtml },
         blocks: childrenPopulated,
-      } = await getChildrenRecursively(children);
+      } = await getBlockChildrenRecursively(children, allPages);
 
       bc.file = [...bc.file, ...file];
       bc.image = [...bc.image, ...image];
       bc.codeCss = [...bc.codeCss, ...codeCss];
       bc.codeHtml = [...bc.codeHtml, ...codeHtml];
 
-      return { ...block, md, parent: md, children: childrenPopulated };
+      return { ...block, children: childrenPopulated };
     })
   );
 
   return { blocksCopy: bc, blocks: blocksPopulated };
 }
 
+function getPageTreeRecursively(parentPageOrBlock, allPages) {
+  const { id: parentId } = parentPageOrBlock;
+  const _pages = allPages.filter((p) => {
+    const parent0 = p?.parents?.[0];
+    return parent0?.id === parentId;
+  });
+
+  if (!_pages || _pages.length === 0) {
+    return {
+      ...parentPageOrBlock,
+      pages: null,
+    };
+  }
+
+  const pages = _pages.map((p) => {
+    return getPageTreeRecursively(p, allPages);
+  });
+
+  const tree = {
+    ...parentPageOrBlock,
+    pages,
+  };
+
+  return tree;
+}
+
 // --- TRANSFORM DATA --- //
 
-async function transformNotionPage(p) {
+async function transformNotionPage(p, _i, allPages) {
   // if (!p?.type?.title?.title) {
   //   console.log(p);
   //   return null;
@@ -611,6 +639,9 @@ async function transformNotionPage(p) {
       ? { slug: null, path: null }
       : slugifyPath(codeName);
 
+  // const { object, id } = p;
+  // console.log({ codeName, object, id, parent });
+
   const npFormatted = {
     // notionRaw: p,
     contentType,
@@ -638,10 +669,13 @@ async function transformNotionPage(p) {
   );
 
   const blocksLevel1 = await getBlockChildren(p.id);
-  const { blocks, blocksCopy } = await getChildrenRecursively(blocksLevel1);
+  const { blocks, blocksCopy } = await getBlockChildrenRecursively(
+    blocksLevel1,
+    allPages
+  );
 
   // HERE
-  console.log({ codeName, p });
+  // console.log({ codeName, p });
 
   // -------EXPERIMENTS ----------
   let nb;
@@ -785,9 +819,11 @@ function loopForParents(elem, elems) {
   return { parents, fullPath, exportsMerged };
 }
 
-function transformBlock(blockRaw) {
-  let block = blockRaw;
-  const blockType = block.type;
+async function transformBlock(_block, allPages) {
+  const blockType = _block.type;
+
+  let md = "";
+  const block = getPageTreeRecursively(_block, allPages);
 
   if (blockType === "file" || blockType === "image") {
     const fileObjectType = block[blockType].type; // The 'File Object' is used by notion to describe both files and images. Its type can be 'external' or 'file'
@@ -805,7 +841,19 @@ function transformBlock(blockRaw) {
     };
   }
 
-  return block;
+  // md field. Comes from n2m most of the time but not everything supported out of the box.
+  if (blockType === "child_page") {
+    md = ``;
+    console.log({ blockType, md });
+  } else if (blockType === "child_database") {
+    md = `<collection><h3>Collection</h3>{pages && pages?.map(page => <collection-item {...page} />)}</collection>`;
+    // TODO: fetch children pages ?? -> Should be children of the db page itself
+    console.log({ blockType, md, block });
+  } else {
+    md = await n2m.blockToMarkdown(block);
+  }
+
+  return { ...block, md, parent: md };
 }
 
 // --- --------------- --- //

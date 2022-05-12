@@ -2,12 +2,12 @@
 // https://astro.build/config
 import { defineConfig } from "astro/config";
 // import sitemap from '@astrojs/sitemap'
-// import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
+import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 // import mdx from "@mdx-js/rollup";
 // import react from "@astrojs/react";
 import preact from "@astrojs/preact";
 // import solid from "@astrojs/solid-js";
-// import fetchAhead from "./integrations/fetch-ahead/index.mjs";
+import fetchAhead from "./integrations/fetch-ahead/index.mjs";
 
 // @type-check enabled!
 // VSCode and other TypeScript-enabled text editors will provide auto-completion,
@@ -22,7 +22,7 @@ export default defineConfig({
     // react(),
     preact(),
     // solid(),
-    // fetchAhead(),
+    fetchAhead(),
   ],
   vite: {
     // NOTE: necessary for astro-icon apparently (https://github.com/natemoo-re/astro-icon)
@@ -30,7 +30,7 @@ export default defineConfig({
     //   external: ['svgo'],
     // },
     plugins: [
-      // viteCommonjs(),
+      viteCommonjs(),
       // mdx(/* jsxImportSource: …, otherOptions… */)
     ],
   },

@@ -1,75 +1,51 @@
 ---
 import Debug from 'astro/debug';
-import { store, populateStore } from '@services/notion.js'
+import deepmerge from 'deepmerge';
+// import { store, populateStore } from '@services/notionOne.js'
 import { notionHelpers } from "@utils";
-import { SkeletonPage } from '@layouts'
+import * as layouts from '@layouts'
 import Planet from '../components/Planet.jsx'
 import pokoComponents from '../components/components.jsx'
+import { toMdx } from '@services/notion.mjs'
+import poko from '@poko'
+
+const { MDXPage } = layouts
 
 export async function getStaticPaths() {
+  // const filePath = "src/_data/poko.json";
+  // const systemPath = `${process.cwd()}/${filePath}`;
 
-  await populateStore()
-  // const { settings, pages } = store || {}
-  const settings = store.get("settings");
-  const pages = store.get("pages");
+  // const poko = await import(systemPath)
+  const { settings: _settings, pages: _pages, files, paths, websiteTree } = poko
 
-  // await gun.get("pages")
-  // .map()
-  // .once(function (v) {
-  //   console.log({v});
-  //   pages = [...pages, v];
-  // });
+  const settingsMDX = await toMdx(_settings.data.md)
+  const settings = { ..._settings, data: { ..._settings.data, ...settingsMDX} }
+  const pages = await Promise.all(_pages.map(async p => {
+    const { MDXContent, exports: pageExports } = await toMdx(p.data.md)
+    // Don't do this map if you want only the exports of the curent page (not inherit from parent pages and settings)
+    const parentsExports = await Promise.all(p?.parents?.map(async parent => {
+      const { exports } = await toMdx(parent.data.md)
+      return exports
+    })) || []
+    const exportsCascade = [...parentsExports, pageExports]
+    const exports = deepmerge(...exportsCascade)
+    return { ...p, MDXContent, exports }
+  }))
 
-
-	// const settings = await getSettings()
-	// const {settings, pages} = await pokoContent()
-
-  // const organizationsStaticPaths = organizations.map(organization => {
-    //   return { params: { path: organization.path }, props: { lang, organization } }
-  // })
-
-  // const staticPaths = [
-    //   { params: { path: 'blog' }, props: { settings, pages } },
-  //   // ...organizationsStaticPaths,
-  // ]
-
-  return pages.map(p => {
-    return { params: { path: p.path === '' ? undefined : p.path }, props: { settings, pages, page: p } }
+  return pages.map(page => {
+    return { params: { path: page.data.path === '' ? undefined : page.data.path }, props: { settings, pages, page, files, paths, websiteTree } }
   })
-  // return [{ params: { path: 'blog' }, props: { pages } }]
+
+  // return [{ params: { path: undefined }, props: {  } }]
 }
 
-const { path } = Astro.params;
-const {
-  settings,
-  pages,
-  page,
-  lang,
-  } = Astro.props;
-
-  // console.log(pages)
-
-const { exports, MDXContent } = page || {}
-const metadata = {
-  ...settings?.exports?.metadata,
-  ...exports?.metadata,
-}
-
-// console.log(settings.headString)
-
-const components = {Planet, ...pokoComponents, ...settings.exports, ...exports} // merge from poko-notion, settings, parents, page
-const props = {
-  code: `ABC`,
-  Layout: pokoComponents.Layout,
-  ...pokoComponents,
-  ...settings.exports,
-  ...exports
-} // merge from poko-notion, settings, parents, page
 ---
 
-<SkeletonPage {...{ path, ...exports, metadata, components}}>
-  <Debug {page} />
+<!-- <SkeletonPage {...{ path, ...exports, metadata, components}}>
+  <Debug {data} />
   <Fragment slot="head" set:html={settings.headString} />
 
   <MDXContent {...{ ...props, notionHelpers, components }} />
-</SkeletonPage>
+</SkeletonPage> -->
+
+<MDXPage  {...Astro.props} />

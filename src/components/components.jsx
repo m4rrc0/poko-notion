@@ -1,5 +1,6 @@
 // import { store } from "@services/notion.js";
-import { notionHelpers } from "@utils";
+import { notionHelpers } from "@src/utils/index.mjs";
+import poko from "@poko";
 
 const components = {
   // --- EXAMPLES FROM DOCS --- //
@@ -15,9 +16,10 @@ const components = {
   // theme: {text: (props) => <span style={{color: 'grey'}} {...props} />},
 
   // --- ALL HTML ELEMENTS IN MD --- //
-  a: ({ href, ...props }) => (
-    <a {...{ ...props, href: notionHelpers.convertHref(href) }} />
-  ),
+  a: ({ href: _href, ...props }) => {
+    const href = notionHelpers.convertHref(_href, poko);
+    return <a {...{ ...props, href }} />;
+  },
   blockquote: "blockquote",
   br: "br",
   code: "code",

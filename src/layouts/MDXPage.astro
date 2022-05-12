@@ -1,0 +1,43 @@
+---
+import Debug from 'astro/debug';
+// import { store, populateStore } from '@services/notionOne.js'
+import { notionHelpers } from "@utils";
+import { SkeletonPage } from '@layouts'
+import Planet from '../components/Planet.jsx'
+import pokoComponents from '../components/components.jsx'
+import { toMdx } from '@services/notion.mjs'
+
+const { pathname } = Astro.canonicalURL;
+console.log({ pathname })
+const { settings, pages, page, files, paths, websiteTree } = Astro.props;
+
+const { headString } = settings.data || {}
+const { exports, MDXContent } = page || {}
+console.log(exports)
+const { metadata } = exports
+
+const components = {Planet, ...pokoComponents, ...exports} // merge from poko-notion, settings, parents, page
+
+// console.log(settings.headString)
+
+const props = {
+  // hardCodedProp: `ABC`,
+  // Layout: pokoComponents.Layout,
+  pages,
+  utils: { ...notionHelpers },
+  components
+}
+
+// const data = { hello: "world"}
+---
+
+<!-- <Debug {page} /> -->
+<SkeletonPage {...{ path: pathname, ...exports, metadata, components}}>
+  <Fragment slot="head" set:html={headString} />
+
+  <MDXContent {...props} />
+</SkeletonPage>
+
+<!-- <SkeletonPage {...{ path: pathname }}>
+  <MDXContent {...{ notionHelpers }} />
+</SkeletonPage> -->

@@ -3,6 +3,7 @@ dist/
 .output/
 public/user-assets
 public/user-images
+src/_data
 
 # dependencies
 node_modules/
