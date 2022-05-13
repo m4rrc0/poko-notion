@@ -28,7 +28,7 @@ export async function getStaticPaths() {
       return exports
     })) || []
     const exportsCascade = [...parentsExports, pageExports]
-    const exports = deepmerge(...exportsCascade)
+    const exports = deepmerge.all(exportsCascade)
     return { ...p, MDXContent, exports }
   }))
 

@@ -1,9 +1,9 @@
-// import { store } from "../services/notion.js";
+import poko from "@poko";
 
 export async function get() {
-  //   const { settings: { globalStylesString } = {} } = store;
+  const globalStylesString = poko?.settings?.data?.globalStylesString;
 
   return {
-    body: process.env.POKO_GLOBAL_STYLES_STRING,
+    body: globalStylesString,
   };
 }

@@ -8,12 +8,12 @@ import pokoComponents from '../components/components.jsx'
 import { toMdx } from '@services/notion.mjs'
 
 const { pathname } = Astro.canonicalURL;
-console.log({ pathname })
+// console.log({ pathname })
 const { settings, pages, page, files, paths, websiteTree } = Astro.props;
 
 const { headString } = settings.data || {}
 const { exports, MDXContent } = page || {}
-console.log(exports)
+// console.log(exports)
 const { metadata } = exports
 
 const components = {Planet, ...pokoComponents, ...exports} // merge from poko-notion, settings, parents, page
@@ -23,6 +23,7 @@ const components = {Planet, ...pokoComponents, ...exports} // merge from poko-no
 const props = {
   // hardCodedProp: `ABC`,
   // Layout: pokoComponents.Layout,
+  ...exports,
   pages,
   utils: { ...notionHelpers },
   components

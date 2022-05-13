@@ -246,7 +246,7 @@ export function treeToMd(blocks) {
   return mdString;
 }
 
-export async function toMdx(mdString) {
+export async function toMdx(mdString, debugString) {
   let MDXContent = undefined;
   let exports = undefined;
 
@@ -272,8 +272,16 @@ export async function toMdx(mdString) {
     MDXContent = MDXContentIn;
     exports = exportsIn;
   } catch (error) {
-    console.error(`Error evaluating ${contentType} ${path || ""} with MDX.\n`);
-    console.info(`Page info:\n`, { slug, path, mdString });
+    // console.error(
+    //   `Error evaluating with MDX: ${debugString || `\n${mdString}`}`
+    // );
+    // console.info(`Page info:\n`, { slug, path, mdString });
+    console.error(error);
+    const matches = mdString.match(/.*\n/g);
+    console.log(
+      "The error is here:\n",
+      matches.slice(error.line - 6, error.line + 4).join("")
+    );
     throw error;
   }
 
