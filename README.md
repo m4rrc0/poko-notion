@@ -13,11 +13,12 @@ Astro + Notion + MDX = ❤️
 
 ### If you are a developer:
 
+<!--
 ```shell
 npm init astro -- --template m4rrc0/poko-astro-notion
 npm install
 npm run dev
-```
+``` -->
 
 For Astro documentation, visit: https://docs.astro.build
 
