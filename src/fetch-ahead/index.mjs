@@ -5,18 +5,17 @@ import { u } from "unist-builder";
 import { visitParents, SKIP, CONTINUE, EXIT } from "unist-util-visit-parents";
 import { map as mapAST } from "unist-util-map";
 import { is } from "unist-util-is";
-import { inspect } from "unist-util-inspect";
-import flatFilter from "unist-util-flat-filter";
-import { filter as filterAST } from "unist-util-filter";
+// import { filter as filterAST } from "unist-util-filter";
 import deepmerge from "deepmerge";
 import {
   rootId,
   filesInfo,
-  n2mBlockToMarkdown,
   transformRawPage,
   transformRichTextToPlainText,
   transformProp,
+  // notionBlockToMd,
   treeToMd,
+  toMdx,
   downloadFile,
   extractZip,
   getNotionPage,
@@ -62,14 +61,18 @@ export default async function (astroConfig) {
       // We don't provide 'allRawPages' so that link_to_page & child_page blocks are not populated
       const _c = await getBlockChildrenRecursively(p);
       const _md = treeToMd(_c);
+      const { exports: _MDXExportsSelf } = await toMdx(_md);
 
-      return { ...p, children: _c, _md };
+      return {
+        ...p,
+        children: _c,
+        _md,
+        _MDXExportsSelf,
+      };
     })
   );
-  // Then find root
-  // Then place pages in tree
-  // ?? Maybe transform everything before (except path)??
 
+  // Find root of website
   root = allRawPages.find((p) =>
     typeof rootID === "string"
       ? p.id.replace(/-/g, "") === rootID.replace(/-/g, "")
@@ -77,44 +80,6 @@ export default async function (astroConfig) {
   );
   // console.log(allRawPages, root);
   rootID = root.id;
-
-  // if (typeof rootID === "string") {
-  //   const _root = await getNotionPage();
-  //   root = transformRawPage(_root);
-  // } else {
-  //   // _allRawPages = await getAllNotionPages();
-  //   root = allRawPages.find((p) => p?.parent?.type === "workspace");
-  //   rootID = root.id;
-  // }
-  // const _children = await getBlockChildren(root.id);
-  // const children = await getBlockChildrenRecursively(root, allRawPages);
-  // n2m.blockToMarkdown is called on getBlockChildrenRecursively as well to populate md data on all blocks
-  // const inlineMd = await n2mBlockToMarkdown(root);
-  // root = { ...root, inlineMd: inlineMd, parent: inlineMd };
-
-  // children.forEach((c) => {
-  //   console.log(c.md);
-  //   console.log(c.parent);
-  //   console.log(c.parents);
-  // });
-  // TODO: HERE
-  // - Loop on everything to use md = await n2m.blockToMarkdown(rawBlock);
-  // - Loop again to populate pages with md = treeToMd(rawBlocksPopulated)
-
-  // function loopOnChildren(block) {
-  //   const _children = block.children;
-  //   if (!Array.isArray(_children)) return block;
-
-  //   const children = _children.map((_c) => {
-  //     const subChildren = populateChildPageOfBlock(_c, allRawPages);
-  //     const c = { ..._c, children: subChildren };
-  //     return loopOnChildren(c);
-  //   });
-
-  //   return { ...block, children };
-  // }
-  // root = loopOnChildren(root);
-  // console.log(root.children);
 
   const notionTree = u("root", root, root.children);
 
@@ -135,6 +100,7 @@ export default async function (astroConfig) {
     // return { ...node, children };
   });
 
+  // Try to generate md for every block
   visitParents(
     notionTree,
     (node) => node.object === "block",
@@ -154,46 +120,6 @@ export default async function (astroConfig) {
       }
     }
   );
-
-  // visitParents(notionTree, (node, ancestors) => {
-  //   console.log(
-  //     "-- CURENT PARENT FIELD --\n",
-  //     node.parent,
-  //     " || ",
-  //     typeof node.parent
-  //   );
-  //   if (Array.isArray(node?.children)) {
-  //     console.log("\n-- CHILDREN --\n");
-  //     node?.children?.forEach((c) => {
-  //       console.log(c.parent, " || ", typeof c.parent);
-  //       if (typeof c.parent !== "string") {
-  //         console.log(c);
-  //       }
-  //     });
-  //   }
-  // });
-
-  // visitParents(notionTree, (node, ancestors) => {
-  //   if (node.object === "page") {
-  //     // const _children = node.children.map(({ object, parent, children }) => {
-  //     //   return object === "page" ? null : {
-  //     //     parent,
-  //     //     children,
-  //     //   }
-  //     // }).filter(z => z);
-  //     node.md = treeToMd(node.children);
-  //     console.log("NODE", node);
-  //     console.log("CHILDREN", node.children);
-  //   }
-  // });
-
-  // tree = transformNodes(tree, nodeTransforms)
-
-  // visitParents(notionTree, (node, ancestors) => {
-  //   console.log(node.object, node.type);
-  // });
-
-  // let currentPage;
 
   // Transform raw Notion tree to more proper unist tree
   const tree = mapAST(notionTree, function (_node, index, OriginalParent) {
@@ -224,6 +150,7 @@ export default async function (astroConfig) {
       _codeName: codeName,
       _md: md,
       _inlineMd: inlineMd,
+      _MDXExportsSelf: MDXExportsSelf,
     } = raw;
 
     // Slug and Path
@@ -255,12 +182,14 @@ export default async function (astroConfig) {
         props: { raw: raw.properties },
         inlineMd,
         md,
+        MDXExportsSelf,
       },
     };
 
     return node;
   });
 
+  // MAIN TRAVERSAL
   visitParents(tree, (node, ancestors) => {
     const { raw, props } = node.data;
 
@@ -280,7 +209,9 @@ export default async function (astroConfig) {
 
     // PAGES
     if (node.type === "page") {
+      //
       // Construct path from ancestors
+      //
       for (let i = ancestors.length - 1; i >= 0; i--) {
         const a = ancestors[i];
         if (a.type === "page") {
@@ -289,7 +220,6 @@ export default async function (astroConfig) {
           i = -1;
         }
       }
-
       const pageId = node.data.id.replace(/-/g, "");
       const pathMap = {
         pageId,
@@ -300,6 +230,14 @@ export default async function (astroConfig) {
         path: node.data.path,
       };
       allPaths.push(pathMap);
+      //
+      // merge exports from parents to current page
+      //
+      const parentsExports =
+        ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
+      const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
+      const exports = deepmerge.all(exportsCascade);
+      node.data.MDXExports = exports;
     }
 
     // --- Handle files --- //
@@ -348,27 +286,29 @@ export default async function (astroConfig) {
 
     // Transform props. We keep a copy of the raw props on a prop called 'raw'
     const propsArrayOfObjects =
-      props.raw &&
-      Object.entries(props.raw).map(([key, val]) => {
-        const prop = transformProp([key, val], node);
-        if (val.type === "files" && Array.isArray(prop.files)) {
-          node.data.files.push(...prop.files);
-          allFiles.push(...prop.files);
-        }
-        return prop;
-      });
+      (props.raw &&
+        Object.entries(props.raw).map(([key, val]) => {
+          const prop = transformProp([key, val], node);
+          if (val.type === "files" && Array.isArray(prop.files)) {
+            node.data.files.push(...prop.files);
+            allFiles.push(...prop.files);
+          }
+          return prop;
+        })) ||
+      [];
 
-    if (Array.isArray(propsArrayOfObjects)) {
-      node.data.props = deepmerge.all(propsArrayOfObjects);
-    }
+    node.data.props = deepmerge.all([
+      ...propsArrayOfObjects,
+      node.data.MDXExports || {},
+    ]);
 
     // if (is(node, { role: "callout" })) {}
 
     // if (is(node, (node) => node.data.role === "image")) {
     // if (node.data.role === "img") {
-    if (is(node, "page")) {
-      // console.log(props);
-    }
+    // if (is(node, "page")) {
+    //   // console.log(props);
+    // }
   });
 
   // TODO: improve this. For example create a map of the downloads and the last modified date
@@ -388,9 +328,6 @@ export default async function (astroConfig) {
   //   // (node) => node.type === "page"
   //   "page"
   // );
-  // const pagesTree = flatFilter(tree, (node) => {
-  //   return node.type === "page";
-  // });
 
   // Replace URLs
   visitParents(
@@ -504,14 +441,11 @@ export default async function (astroConfig) {
 
   // console.log(pagesTree);
 
-  // const allPages = flatFilter(tree, (node) => node.type === "page");
-
   // visitParents(tree, (node, ancestors) => {
   //   console.log(node.type, node.data.role);
   // });
 
   // console.dir(pagesTree, { depth: null });
-  // console.log(inspect(tree));
 
   const poko = {
     settings,

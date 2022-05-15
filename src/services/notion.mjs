@@ -18,7 +18,6 @@ import remarkGfm from "remark-gfm";
 import rehypeAttr from "rehype-attr";
 import rehypeSlug from "rehype-slug";
 import StreamZip from "node-stream-zip";
-import NodeCache from "node-cache";
 import { slugify, slugifyPath, parseFileUrl } from "../utils/index.mjs";
 
 // --- INITIALIZATION --- //
@@ -33,7 +32,6 @@ const notion = new Client({ auth: NOTION_TOKEN });
 
 // NotionToMarkdown: passing notion client to the option
 const n2m = new NotionToMarkdown({ notionClient: notion });
-export const n2mBlockToMarkdown = n2m.blockToMarkdown;
 
 // --- UTILS --- //
 export function rootId() {
@@ -227,6 +225,56 @@ export function transformProp([_key, _val] = [], node) {
   }
 
   return { [_key]: val };
+}
+
+// TODO HERE
+export async function notionBlockToMd(block) {
+  let inlineMd;
+  switch (block.type) {
+    case "child_database":
+      inlineMd = `<Collection blockId="${block.id}" collectionName="${block.child_database?.title}" />`;
+      break;
+    case "child_page":
+      inlineMd = `<ChildPage blockId="${block.id}" pageName="${block.child_page?.title}" />`;
+      break;
+    // case "column_list":
+    //   // console.log(block);
+    //   inlineMd = `<Columns blockId="${block.id}"></Columns>`;
+    //   break;
+    // case "column":
+    //   // inlineMd = `<Column blockId="${block.id}"></Column>`;
+    //   break;
+    case "toggle":
+    // inlineMd = ``;
+    // break;
+    case "paragraph":
+    case "image":
+    case "file":
+    case "code":
+    case "bulleted_list_item":
+    case "heading_1":
+    case "heading_2":
+    case "heading_3":
+    case "quote":
+    case "divider":
+    case "callout":
+      inlineMd = await n2m.blockToMarkdown(block);
+      break;
+
+    default:
+      inlineMd = await n2m.blockToMarkdown(block);
+      break;
+  }
+  // if (blockType === "child_page") {
+  //   inlineMd = ``;
+  //   console.log({ blockType, inlineMd });
+  // } else if (blockType === "child_database") {
+  //   inlineMd = `<collection><h3>Collection</h3>{pages && pages?.map(page => <collection-item {...page} />)}</collection>`;
+  //   // TODO: fetch children pages ?? -> Should be children of the db page itself
+  //   console.log({ blockType, inlineMd, block });
+  // } else {
+  // }
+  return inlineMd;
 }
 
 export function treeToMd(blocks) {
@@ -571,7 +619,7 @@ export async function getBlockChildrenRecursively(
       let block = _block;
 
       if (block.object !== "page") {
-        const _inlineMd = await n2m.blockToMarkdown(_block);
+        const _inlineMd = await notionBlockToMd(_block);
         const _mayHaveNotionLink = !!_inlineMd.match(/\/[0-9a-z\-]{32}/);
         block = { ..._block, _inlineMd, parent: _inlineMd, _mayHaveNotionLink };
       }
@@ -699,10 +747,4 @@ export function populateChildPageOfBlock(_block, allRawPages) {
     children = [page];
   }
   return children;
-}
-
-// ---  --- //
-
-export function temp() {
-  return "Hello again from notion";
 }

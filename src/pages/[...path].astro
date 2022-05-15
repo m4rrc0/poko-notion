@@ -9,7 +9,7 @@ import pokoComponents from '../components/components.jsx'
 import { toMdx } from '@services/notion.mjs'
 import poko from '@poko'
 
-const { MDXPage } = layouts
+const { MDXPage, AstroPage } = layouts
 
 export async function getStaticPaths() {
   // const filePath = "src/_data/poko.json";
@@ -39,6 +39,10 @@ export async function getStaticPaths() {
   // return [{ params: { path: undefined }, props: {  } }]
 }
 
+
+const { settings, pages, page, files, paths, websiteTree } = Astro.props;
+const markdownRenderer = page?.data?.props?.markdownRenderer?.toLowerCase() || 'mdx'
+
 ---
 
 <!-- <SkeletonPage {...{ path, ...exports, metadata, components}}>
@@ -48,4 +52,8 @@ export async function getStaticPaths() {
   <MDXContent {...{ ...props, notionHelpers, components }} />
 </SkeletonPage> -->
 
-<MDXPage  {...Astro.props} />
+
+{markdownRenderer === 'mdx' && <MDXPage  {...Astro.props} />}
+{markdownRenderer === 'astro' && <AstroPage  {...Astro.props} />}
+
+
