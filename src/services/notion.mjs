@@ -15,7 +15,6 @@ import remarkFrontmatter from "remark-frontmatter"; // YAML and such.
 import { remarkMdxFrontmatter } from "remark-mdx-frontmatter";
 import remarkUnwrapImages from "remark-unwrap-images";
 import remarkGfm from "remark-gfm";
-import rehypeAttr from "rehype-attr";
 import rehypeSlug from "rehype-slug";
 import StreamZip from "node-stream-zip";
 import { slugify, slugifyPath, parseFileUrl } from "../utils/index.mjs";
@@ -210,6 +209,7 @@ export function transformProp([_key, _val] = [], node) {
   } else if (type === "relation") {
     // TODO: transform link OR have the page data in directly?
   } else if (type) {
+    // TODO: handle more types
     // val = _val[type];
     //
     // console.log({ type, _key, _val, val });
@@ -314,7 +314,7 @@ export async function toMdx(mdString, debugString) {
         remarkUnwrapImages,
         remarkGfm,
       ],
-      rehypePlugins: [rehypeAttr, rehypeSlug],
+      rehypePlugins: [rehypeSlug],
     });
 
     MDXContent = MDXContentIn;

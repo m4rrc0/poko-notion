@@ -41,7 +41,6 @@
     "nodejs-file-downloader": "^4.9.3",
     "notion-to-md": "^2.3.2",
     "preact": "^10.7.1",
-    "rehype-attr": "^2.0.8",
     "rehype-slug": "^5.0.1",
     "remark-frontmatter": "^4.0.1",
     "remark-gfm": "^3.0.1",

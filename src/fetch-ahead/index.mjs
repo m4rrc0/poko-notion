@@ -78,7 +78,7 @@ export default async function (astroConfig) {
       ? p.id.replace(/-/g, "") === rootID.replace(/-/g, "")
       : p?.parent?.type === "workspace"
   );
-  // console.log(allRawPages, root);
+
   rootID = root.id;
 
   const notionTree = u("root", root, root.children);
@@ -96,11 +96,10 @@ export default async function (astroConfig) {
     });
 
     node.children = children;
-
-    // return { ...node, children };
   });
 
-  // Try to generate md for every block
+  // Try to generate md for every block.
+  // ?? Is it usefull ??
   visitParents(
     notionTree,
     (node) => node.object === "block",
@@ -115,15 +114,12 @@ export default async function (astroConfig) {
         // console.log(
         //   `!!!!!!!!!md impossible on ${node.object} ${node._codeName} of type ${node.type}`
         // );
-        // console.error(error);
-        // console.log(node.children);
       }
     }
   );
 
   // Transform raw Notion tree to more proper unist tree
   const tree = mapAST(notionTree, function (_node, index, OriginalParent) {
-    // console.log(_node);
     const { children, ...raw } = _node;
 
     let type, role;
@@ -157,12 +153,10 @@ export default async function (astroConfig) {
     const { slug, path } =
       role === "settings" ? { slug: null, path: null } : slugifyPath(codeName);
 
-    // const inline = transformRichText(raw[raw.type]?.rich_text);
+    // Inline values:
+    //   inlineProps is for ex the language of a code block...
     const { rich_text: inline, ...inlineProps } = raw[raw.type] || {};
     const inlinePlainText = transformRichTextToPlainText(inline);
-    // const inline = inlineProps?.rich_text;
-
-    // console.log(type, codeName, path);
 
     const node = {
       type,
@@ -193,7 +187,6 @@ export default async function (astroConfig) {
   visitParents(tree, (node, ancestors) => {
     const { raw, props } = node.data;
 
-    // console.log(node.data.raw.type, " || ", node.data.role);
     // SETTINGS
     if (node.type === "root") {
       const globalStylesBlock = node.children.find((c) => {
@@ -216,10 +209,21 @@ export default async function (astroConfig) {
         const a = ancestors[i];
         if (a.type === "page") {
           node.data.path = [a.data.path, node.data.path].join("/");
-          // nodes are visited from parent to children so only the first parent page is necessary
+          // nodes are visited from parent to children so only the first parent page (in reverse order) is necessary
           i = -1;
         }
       }
+      //
+      // merge exports from parents to current page
+      //
+      const parentsExports =
+        ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
+      const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
+      const exports = deepmerge.all(exportsCascade);
+      node.data.MDXExports = exports;
+      //
+      // Save a MAP of all the pages with the Notion ID, Notion URLs and our local path
+      //
       const pageId = node.data.id.replace(/-/g, "");
       const pathMap = {
         pageId,
@@ -230,21 +234,13 @@ export default async function (astroConfig) {
         path: node.data.path,
       };
       allPaths.push(pathMap);
-      //
-      // merge exports from parents to current page
-      //
-      const parentsExports =
-        ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
-      const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
-      const exports = deepmerge.all(exportsCascade);
-      node.data.MDXExports = exports;
     }
 
     // --- Handle files --- //
     const { featuredImage, cover, icon, image, file } = filesInfo(node);
 
-    // console.log({ featuredImage, cover, icon, image, file });
     // also replace url in the raw notion data to be able to use n2m
+    // NOTE: not really useful atm bc n2m is used before I think, but might change
     if (featuredImage) {
       node.data.raw.icon[raw.icon.type].url = featuredImage.url;
     }
@@ -257,10 +253,9 @@ export default async function (astroConfig) {
     Object.entries({ featuredImage, cover, icon, image, file }).forEach(
       ([key, fileObject]) => {
         if (fileObject) {
-          // allFiles = [...allFiles, fileObject]; // push files in an array to download everything at once after
           node.data[key] = fileObject; // assign data like: node.data.cover = cover;
           node.data.files.push(fileObject);
-          allFiles.push(fileObject);
+          allFiles.push(fileObject); // push files in an array to download everything at once after
 
           // Also replace links in md
           const localPath = fileObject.url;
@@ -272,9 +267,6 @@ export default async function (astroConfig) {
           if (typeof node.data.inlineMd === "string") {
             node.data.inlineMd = node.data.inlineMd.replace(re, localPath);
           }
-
-          // console.log(node.data.md);
-          // console.log(node.data.inlineMd);
         }
       }
     );
@@ -301,14 +293,6 @@ export default async function (astroConfig) {
       ...propsArrayOfObjects,
       node.data.MDXExports || {},
     ]);
-
-    // if (is(node, { role: "callout" })) {}
-
-    // if (is(node, (node) => node.data.role === "image")) {
-    // if (node.data.role === "img") {
-    // if (is(node, "page")) {
-    //   // console.log(props);
-    // }
   });
 
   // TODO: improve this. For example create a map of the downloads and the last modified date
@@ -320,14 +304,6 @@ export default async function (astroConfig) {
       }
     })
   );
-
-  // Pages tree
-  // const pagesTree = filterAST(
-  //   tree,
-  //   { cascade: false },
-  //   // (node) => node.type === "page"
-  //   "page"
-  // );
 
   // Replace URLs
   visitParents(
@@ -418,12 +394,6 @@ export default async function (astroConfig) {
             node.data.inlineMd = node.data.inlineMd.replaceAll(re, newPath);
         });
       });
-
-      // console.log({
-      //   // _mayHaveNotionLink,
-      //   md: node.data.md,
-      //   // inlineMd: node.data.inlineMd,
-      // });
     }
   );
 
@@ -438,14 +408,6 @@ export default async function (astroConfig) {
       pages.push(page);
     } else settings = node;
   });
-
-  // console.log(pagesTree);
-
-  // visitParents(tree, (node, ancestors) => {
-  //   console.log(node.type, node.data.role);
-  // });
-
-  // console.dir(pagesTree, { depth: null });
 
   const poko = {
     settings,
@@ -471,38 +433,6 @@ export default async function (astroConfig) {
 
   return;
 }
-
-// const nodeTransforms = [
-//   // { is: [node, test, index, parent], func: (node, ancestors, tree) => { doSomething(node) } }
-//   { is: true, func: (node, ancestors, tree) => { node = { type: node.type, _: node }; } }
-// ]
-
-// async function transformNodes(_tree, transforms = []) {
-//   let tree = _tree
-//   visitParents(tree, (node, ancestors) => {
-//     transforms.forEach(t => {
-//       if (t?.is === true || is(...t?.is)) {
-//         t?.func(node, ancestors, tree)
-//       }
-//     })
-//     // console.log(node);
-//   });
-
-//   return tree
-// }
-
-// const fs = require('fs');
-// const markdown = require('remark-parse');
-// const remark2rehype = require('remark-rehype');
-// const html = require('rehype-stringify');
-// const imgToFigure = require('./img-to-figure');
-
-// const contents = unified()
-//   .use(markdown)
-//   .use(remark2rehype)
-//   .use(imgToFigure)
-//   .processSync(fs.readFileSync('corgi.md'))
-//   .toString();
 
 const rawTypes = {
   paragraph: "p",
