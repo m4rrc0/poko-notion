@@ -1,18 +1,18 @@
 {
   "name": "@m4rrc0/astro-fetch-ahead",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "private": false,
   "description": "Astro integration to do async stuff before the actual build",
   "license": "AGPL-3.0-or-later",
-  "repository": "m4rrc0/astro-fetch-ahead",
+  "repository": "m4rrc0/poko-notion/astro-integrations/astro-fetch-ahead",
   "keywords": [
     "astro",
     "astro-integration",
     "astro-component"
   ],
-  "homepage": "https://github.com/m4rrc0/astro-fetch-ahead",
+  "homepage": "https://github.com/m4rrc0/poko-notion/astro-integrations/astro-fetch-ahead",
   "bugs": {
-    "url": "https://github.com/m4rrc0/astro-fetch-ahead/issues"
+    "url": "https://github.com/m4rrc0/poko-notion/issues"
   },
   "author": "m4rrc0 (https://www.m4rr.co/)",
   "type": "module",
