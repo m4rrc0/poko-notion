@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@astrojs/preact": "^0.1.2",
+    "@m4rrc0/astro-fetch-ahead": "file:astro-integrations/astro-fetch-ahead",
     "@mdx-js/mdx": "^2.1.1",
     "@mdx-js/rollup": "^2.1.1",
     "@notionhq/client": "^1.0.4",

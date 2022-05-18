@@ -19,6 +19,10 @@ const getBlock = (tree, blockId) => {
   return _block;
 };
 
+const Poko = ({ children, components, ...props }) => {
+  return children({ poko, components, ...props });
+};
+
 const CollectionWrapper = (props) => <div class="grid" {...props} />;
 const CollectionArticle = ({ collection, ...props }) => {
   const titlePropName = props?.data?.raw?._titlePropName;
@@ -125,6 +129,7 @@ const components = {
       </>
     );
   },
+  Poko,
   Menu: ({ children, components, ...props }) => {
     const topLevelPages = poko?.websiteTree?.children
       .filter((block) => {
@@ -214,6 +219,11 @@ const components = {
   // ColumnsWrapper,
   // Col,
   // Column: () => null,
+  Test: () => {
+    return (
+      <Poko>{({ poko }) => <div>{poko?.pages?.[1]?.data?.codeName}</div>}</Poko>
+    );
+  },
 };
 
 export default components;

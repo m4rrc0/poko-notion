@@ -21,14 +21,16 @@ export async function getStaticPaths() {
   const settings = { ..._settings, data: { ..._settings.data, ...settingsMDX} }
   const pages = await Promise.all(_pages.map(async p => {
     const { MDXContent, exports: pageExports } = await toMdx(p.data.md)
+    const pageProps = {...p.data?.props, ...pageExports}
     // Don't do this map if you want only the exports of the curent page (not inherit from parent pages and settings)
-    const parentsExports = await Promise.all(p?.parents?.map(async parent => {
+    const parentsProps = await Promise.all(p?.parents?.map(async parent => {
       const { exports } = await toMdx(parent.data.md)
-      return exports
+      const parentProps = {...parent.data?.props, ...exports}
+      return parentProps
     })) || []
-    const exportsCascade = [...parentsExports, pageExports]
-    const exports = deepmerge.all(exportsCascade)
-    return { ...p, MDXContent, exports }
+    const propsCascade = [...parentsProps, pageProps]
+    const props = deepmerge.all(propsCascade)
+    return { ...p, MDXContent, ...props }
   }))
 
   return pages.map(page => {

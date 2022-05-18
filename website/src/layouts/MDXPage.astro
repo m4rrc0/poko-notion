@@ -11,28 +11,32 @@ const { pathname } = Astro.canonicalURL;
 const { settings, pages, page, files, paths, websiteTree } = Astro.props;
 
 const { headString } = settings.data || {}
-const { exports, MDXContent } = page || {}
+const { MDXContent, metadata, ..._props } = page || {}
 // console.log(exports)
-const { metadata } = exports
+// const { metadata } = exports
 
-const components = {...pokoComponents, ...exports} // merge from poko-notion, settings, parents, page
+const components = {...pokoComponents, ..._props} // merge from poko-notion, settings, parents, page
 
 // console.log(settings.headString)
 
 const props = {
   // hardCodedProp: `ABC`,
   // Layout: pokoComponents.Layout,
-  ...exports,
+  // ...exports,
+  settings,
+  // page,
   pages,
   utils: { ...notionHelpers },
-  components
+  components,
+  metadata,
+  ..._props
 }
 
 // const data = { hello: "world"}
 ---
 
 <!-- <Debug {page} /> -->
-<SkeletonPage {...{ path: pathname, ...exports, metadata, components}}>
+<SkeletonPage {...{ path: pathname, ..._props, metadata, components}}>
   <Fragment slot="head" set:html={headString} />
 
   <MDXContent {...props} />

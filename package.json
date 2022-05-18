@@ -1,0 +1,16 @@
+{
+  "name": "@m4rrc0/poko",
+  "workspaces": [
+    "website",
+    "services/*",
+    "astro-integrations/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=website",
+    "start": "npm start --workspace=website",
+    "build": "npm run build --workspace=website",
+    "preview": "npm run preview --workspace=website",
+    "serve": "npm run serve --workspace=website"
+  }
+}

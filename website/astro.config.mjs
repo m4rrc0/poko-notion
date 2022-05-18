@@ -7,7 +7,7 @@ import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 // import react from "@astrojs/react";
 import preact from "@astrojs/preact";
 // import solid from "@astrojs/solid-js";
-import fetchAhead from "./integrations/fetch-ahead/index.mjs";
+import fetchAhead from "@m4rrc0/astro-fetch-ahead";
 
 // @type-check enabled!
 // VSCode and other TypeScript-enabled text editors will provide auto-completion,
