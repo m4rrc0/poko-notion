@@ -234,6 +234,21 @@ export async function notionBlockToMd(block) {
     case "child_page":
       inlineMd = `<ChildPage blockId="${block.id}" pageName="${block.child_page?.title}" />`;
       break;
+    case "link_to_page":
+      console.log({
+        block,
+        pageId:
+          block?.link_to_page?.page_id || block?.link_to_page?.database_id,
+      });
+      inlineMd = `<BlockLinkPage blockId="${block.id}" pageId="${
+        block?.link_to_page?.page_id || block?.link_to_page?.database_id
+      }" />`;
+      break;
+    case "numbered_list_item":
+      // Not handled properly by notion-to-markdown apparently
+      inlineMd = await n2m.blockToMarkdown(block);
+      inlineMd = inlineMd.replace(/^-/, "1.");
+      break;
     // case "column_list":
     //   // console.log(block);
     //   inlineMd = `<Columns blockId="${block.id}"></Columns>`;
