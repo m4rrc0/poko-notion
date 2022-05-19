@@ -14,6 +14,7 @@ import fetchAhead from "@m4rrc0/astro-fetch-ahead";
 // helpful tooltips, and warnings if your exported object is invalid.
 // You can disable this by removing "@ts-check" and `@type` comments below.
 
+console.log(process.env);
 // @ts-check
 export default defineConfig({
   site: "https://www.poko.page/",
