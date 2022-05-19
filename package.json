@@ -12,11 +12,5 @@
     "build": "npm run build --workspace=website",
     "preview": "npm run preview --workspace=website",
     "serve": "npm run serve --workspace=website"
-  },
-  "dependencies": {
-    "@astrojs/sitemap": "^0.1.0"
-  },
-  "devDependencies": {
-    "astro-robots-txt": "^0.1.15"
   }
 }

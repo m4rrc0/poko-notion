@@ -30,11 +30,13 @@
   },
   "dependencies": {
     "@astrojs/preact": "^0.1.2",
+    "@astrojs/sitemap": "^0.1.0",
     "@m4rrc0/astro-fetch-ahead": "^1.0.0-alpha.0",
     "@mdx-js/mdx": "^2.1.1",
     "@mdx-js/rollup": "^2.1.1",
     "@notionhq/client": "^1.0.4",
     "@originjs/vite-plugin-commonjs": "^1.0.3",
+    "astro-robots-txt": "^0.1.15",
     "deepmerge": "^4.2.2",
     "dotenv": "^16.0.0",
     "lodash.set": "^4.3.2",
