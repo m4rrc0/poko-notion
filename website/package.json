@@ -19,9 +19,9 @@
   },
   "author": "m4rrc0 (https://www.m4rr.co/)",
   "scripts": {
-    "dev": "astro dev --experimental-integrations",
-    "start": "astro dev --experimental-integrations",
-    "build": "astro build --experimental-integrations",
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
     "preview": "astro preview",
     "serve": "astro preview"
   },

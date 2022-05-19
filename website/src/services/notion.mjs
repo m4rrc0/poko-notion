@@ -1,5 +1,3 @@
-import fs, { writeFile } from "fs";
-import https from "https";
 import "dotenv/config";
 import Downloader from "nodejs-file-downloader";
 import { Client } from "@notionhq/client";
@@ -17,10 +15,9 @@ import remarkUnwrapImages from "remark-unwrap-images";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import StreamZip from "node-stream-zip";
-import { slugify, slugifyPath, parseFileUrl } from "../utils/index.mjs";
+import { parseFileUrl } from "../utils/index.mjs";
 
 // --- INITIALIZATION --- //
-const fsPromises = fs.promises;
 
 const dirUserAssets = "user-assets";
 

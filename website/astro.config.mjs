@@ -1,12 +1,12 @@
 // Full Astro Configuration API Documentation:
 // https://astro.build/config
 import { defineConfig } from "astro/config";
-// import sitemap from '@astrojs/sitemap'
+import "dotenv/config";
+import sitemap from "@astrojs/sitemap";
+import robotsTxt from "astro-robots-txt";
 import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 // import mdx from "@mdx-js/rollup";
-// import react from "@astrojs/react";
 import preact from "@astrojs/preact";
-// import solid from "@astrojs/solid-js";
 import fetchAhead from "@m4rrc0/astro-fetch-ahead";
 
 // @type-check enabled!
@@ -14,15 +14,17 @@ import fetchAhead from "@m4rrc0/astro-fetch-ahead";
 // helpful tooltips, and warnings if your exported object is invalid.
 // You can disable this by removing "@ts-check" and `@type` comments below.
 
-console.log(process.env);
+const site = process.env.SITE;
+
 // @ts-check
 export default defineConfig({
-  site: "https://www.poko.page/",
-  // markdown: { mode: 'mdx' },
+  experimental: {
+    integrations: true,
+  },
+  ...(site ? { site } : {}),
   integrations: [
-    // react(),
+    ...(site ? [sitemap(), robotsTxt()] : []),
     preact(),
-    // solid(),
     fetchAhead(),
   ],
   vite: {
