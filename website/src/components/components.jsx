@@ -173,6 +173,15 @@ const components = {
     );
   },
   ChildPage: () => null,
+  BlockLinkPage: ({ pageId }) => {
+    const page = poko.pages.find((p) => p.data.id === pageId);
+    return (
+      <a
+        href={`/${page.data.path}`}
+        children={page.data.props.title || page.data.codeName}
+      />
+    );
+  },
   Collection: ({ ...props }) => {
     // Need to find the page that is a child of this block
     const { blockId, collectionName } = props;

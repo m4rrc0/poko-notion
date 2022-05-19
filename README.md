@@ -1,8 +1,5 @@
 # Poko Astro-Notion
 
-\# Digital garden  
-\# Learn in Public
-
 <!-- [Demo](https://simple-blog-template.netlify.app/) 👀  -->
 
 ## tl;dr
@@ -10,6 +7,10 @@
 Astro + Notion + MDX = ❤️
 
 <!-- [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/minimal) -->
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/m4rrc0/poko-notion)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fm4rrc0%2Fpoko-notion&env=NOTION_TOKEN,SITE&envDescription=Your%20notion%20integration%20token%20and%20production%20website%20URL&envLink=https%3A%2F%2Fpoko.m4rr.co)
 
 ### If you are a human:
 
