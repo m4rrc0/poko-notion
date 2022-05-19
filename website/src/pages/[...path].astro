@@ -46,14 +46,6 @@ const markdownRenderer = page?.data?.props?.markdownRenderer?.toLowerCase() || '
 
 ---
 
-<!-- <SkeletonPage {...{ path, ...exports, metadata, components}}>
-  <Debug {data} />
-  <Fragment slot="head" set:html={settings.headString} />
-
-  <MDXContent {...{ ...props, notionHelpers, components }} />
-</SkeletonPage> -->
-
-
 {markdownRenderer === 'mdx' && <MDXPage  {...Astro.props} />}
 {markdownRenderer === 'astro' && <AstroPage  {...Astro.props} />}
 
