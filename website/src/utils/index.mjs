@@ -1,3 +1,4 @@
+import deepmerge from "deepmerge";
 export { notionHelpers } from "./notionHelpers.mjs";
 
 export function slugify(string) {
@@ -50,3 +51,68 @@ export const parseFileUrl = (url) => {
 export function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
 }
+
+export const deepMergeProps = (elements = []) => {
+  const [settingsProps, ...parentsProps] = elements;
+  const selfProps =
+    parentsProps.length > 1
+      ? parentsProps[parentsProps.length - 1]
+      : { ...settingsProps };
+
+  const {
+    metadata: allMetadata,
+    raw: allRaw,
+    title: allTitle,
+    components,
+    ...allMerged
+  } = deepmerge.all(elements);
+
+  // Scan for possible components among exports and merge on the 'components' prop later
+  const possibleComponents = Object.entries(allMerged).reduce(
+    (prev, [key, val]) => {
+      const next = (typeof val).match(/function|string/) ? { [key]: val } : {};
+      return { ...prev, ...next };
+    },
+    {}
+  );
+
+  const metadata = deepmerge(
+    settingsProps.metadata || {},
+    selfProps.metadata || {}
+  );
+
+  return {
+    ...allMerged,
+    components: {
+      ...components,
+      ...possibleComponents,
+    },
+    raw: selfProps.raw,
+    title: selfProps.title,
+    metadata,
+    self: selfProps,
+  };
+
+  //   const parentsExports =
+  //   ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
+  // const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
+  // const exports = deepmerge.all(exportsCascade);
+
+  //
+
+  // const settingsMDX = await toMdx(_settings.data.md)
+  // const settings = { ..._settings, data: { ..._settings.data, ...settingsMDX} }
+  // const pages = await Promise.all(_pages.map(async p => {
+  //   const { MDXContent, exports: pageExports } = await toMdx(p.data.md)
+  //   const pageProps = {...p.data?.props, ...pageExports}
+  //   // Don't do this map if you want only the exports of the curent page (not inherit from parent pages and settings)
+  //   const parentsProps = await Promise.all(p?.parents?.map(async parent => {
+  //     const { exports } = await toMdx(parent.data.md)
+  //     const parentProps = {...parent.data?.props, ...exports}
+  //     return parentProps
+  //   })) || []
+  //   const propsCascade = [...parentsProps, pageProps]
+  //   const props = deepmerge.all(propsCascade)
+  //   return { ...p, MDXContent, ...props }
+  // }))
+};

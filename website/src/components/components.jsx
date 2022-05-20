@@ -1,3 +1,5 @@
+import preact from "preact";
+import * as preactHooks from "preact/hooks";
 import { visitParents } from "unist-util-visit-parents";
 // import { store } from "@services/notion.js";
 import { notionHelpers } from "@src/utils/index.mjs";
@@ -21,6 +23,9 @@ const getBlock = (tree, blockId) => {
 
 const Poko = ({ children, components, ...props }) => {
   return children({ poko, components, ...props });
+};
+const Preact = ({ children, components, ...props }) => {
+  return children({ ...preact, ...preactHooks, components, ...props });
 };
 
 const CollectionWrapper = (props) => <div class="grid" {...props} />;
@@ -130,6 +135,7 @@ const components = {
     );
   },
   Poko,
+  Preact,
   Menu: ({ children, components, ...props }) => {
     const topLevelPages = poko?.websiteTree?.children
       .filter((block) => {

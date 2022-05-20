@@ -23,7 +23,12 @@ import {
   getBlockChildrenRecursively,
   populateChildPageOfBlock,
 } from "../services/notion.mjs";
-import { slugifyPath, parseFileUrl, escapeRegExp } from "../utils/index.mjs";
+import {
+  slugifyPath,
+  parseFileUrl,
+  escapeRegExp,
+  deepMergeProps,
+} from "../utils/index.mjs";
 
 const dirUserAssets = "user-assets";
 
@@ -146,10 +151,11 @@ export default async function (astroConfig) {
       _codeName: codeName,
       _md: md,
       _inlineMd: inlineMd,
-      _MDXExportsSelf: MDXExportsSelf,
+      _MDXExportsSelf,
     } = raw;
 
     // Slug and Path
+    // Currently, path is only the last section, corresponding to the codeName of the page
     const { slug, path } =
       role === "settings" ? { slug: null, path: null } : slugifyPath(codeName);
 
@@ -157,6 +163,28 @@ export default async function (astroConfig) {
     //   inlineProps is for ex the language of a code block...
     const { rich_text: inline, ...inlineProps } = raw[raw.type] || {};
     const inlinePlainText = transformRichTextToPlainText(inline);
+
+    // Setup Notion page properties as props
+    const propsArrayOfObjects =
+      (raw.properties &&
+        Object.entries(raw.properties).map(([key, val]) => {
+          // Transform page properties.
+          const prop = transformProp([key, val], role);
+          // Save files in our global 'allFiles' array
+          if (val.type === "files" && Array.isArray(prop.files)) {
+            node.data.files.push(...prop.files);
+            allFiles.push(...prop.files);
+          }
+          return prop;
+        })) ||
+      [];
+
+    // Merge Notion properties with MDXExports for that page (=MDXExportsSelf).
+    // Note: MDXExportsSelf contains 'exports' definitions and frontmatter already
+    const props = deepmerge.all([
+      ...propsArrayOfObjects,
+      _MDXExportsSelf || {},
+    ]);
 
     const node = {
       type,
@@ -172,11 +200,11 @@ export default async function (astroConfig) {
         inlineProps,
         inline,
         inlinePlainText,
-        // props: { raw: raw._props },
-        props: { raw: raw.properties },
+        // We keep a copy of the raw Notion properties on a prop called 'raw'
+        props: { raw: raw.properties, title: codeName, ...props },
         inlineMd,
         md,
-        MDXExportsSelf,
+        // MDXExportsSelf,
       },
     };
 
@@ -185,7 +213,7 @@ export default async function (astroConfig) {
 
   // MAIN TRAVERSAL
   visitParents(tree, (node, ancestors) => {
-    const { raw, props } = node.data;
+    const { raw } = node.data;
 
     // SETTINGS
     if (node.type === "root") {
@@ -208,7 +236,9 @@ export default async function (astroConfig) {
       for (let i = ancestors.length - 1; i >= 0; i--) {
         const a = ancestors[i];
         if (a.type === "page") {
-          node.data.path = [a.data.path, node.data.path].join("/");
+          node.data.path = [a.data.path, node.data.path]
+            .filter((z) => z) // remove empty paths e.g. the 'index' page to avoid leading or double  '/'
+            .join("/");
           // nodes are visited from parent to children so only the first parent page (in reverse order) is necessary
           i = -1;
         }
@@ -216,11 +246,15 @@ export default async function (astroConfig) {
       //
       // merge exports from parents to current page
       //
-      const parentsExports =
-        ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
-      const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
-      const exports = deepmerge.all(exportsCascade);
-      node.data.MDXExports = exports;
+      const parentsProps =
+        ancestors.map((a) => a.data?.props).filter((z) => z) || [];
+      node.data.props = deepMergeProps([...parentsProps, node.data.props]);
+
+      // const parentsExports =
+      //   ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
+      // const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
+      // const exports = deepmerge.all(exportsCascade);
+      // node.data.MDXExports = exports;
       //
       // Save a MAP of all the pages with the Notion ID, Notion URLs and our local path
       //
@@ -275,24 +309,6 @@ export default async function (astroConfig) {
     // pages and DBs and Callouts have icon emojis
     const emoji = raw.icon?.emoji || raw[raw.type]?.icon?.emoji;
     node.data.emoji = emoji;
-
-    // Transform props. We keep a copy of the raw props on a prop called 'raw'
-    const propsArrayOfObjects =
-      (props.raw &&
-        Object.entries(props.raw).map(([key, val]) => {
-          const prop = transformProp([key, val], node);
-          if (val.type === "files" && Array.isArray(prop.files)) {
-            node.data.files.push(...prop.files);
-            allFiles.push(...prop.files);
-          }
-          return prop;
-        })) ||
-      [];
-
-    node.data.props = deepmerge.all([
-      ...propsArrayOfObjects,
-      node.data.MDXExports || {},
-    ]);
   });
 
   // TODO: improve this. For example create a map of the downloads and the last modified date

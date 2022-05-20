@@ -173,8 +173,8 @@ export function transformRichTextToPlainText(_val) {
   return _val;
 }
 
-export function transformProp([_key, _val] = [], node) {
-  if (node.data.role === "collection") {
+export function transformProp([_key, _val] = [], role) {
+  if (role === "collection") {
     return { [_key]: _val };
   }
   // name === _key
@@ -364,8 +364,6 @@ export async function extractZip(fileObject) {
     console.error(`Error unziping file ${filename}.\n`, err);
   });
 }
-
-// HERE
 
 export async function downloadFile(fileObject) {
   const { originalUrl, filename, extension, url } = fileObject;

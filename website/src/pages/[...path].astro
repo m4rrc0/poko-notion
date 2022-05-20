@@ -1,8 +1,9 @@
 ---
 import Debug from 'astro/debug';
 import deepmerge from 'deepmerge';
+import { visitParents } from "unist-util-visit-parents";
 // import { store, populateStore } from '@services/notionOne.js'
-import { notionHelpers } from "@utils";
+import { notionHelpers, deepMergeProps } from "@utils";
 import * as layouts from '@layouts'
 import pokoComponents from '../components/components.jsx'
 import { toMdx } from '@services/notion.mjs'
@@ -17,23 +18,27 @@ export async function getStaticPaths() {
   // const poko = await import(systemPath)
   const { settings: _settings, pages: _pages, files, paths, websiteTree } = poko
 
-  const settingsMDX = await toMdx(_settings.data.md)
-  const settings = { ..._settings, data: { ..._settings.data, ...settingsMDX} }
+  // TODO: loop recursively on tree instead of computing parent pages multiple times
+
+  const { MDXContent: MDXContentSettings, exports: exportsSettings } = await toMdx(_settings.data.md)
+  const propsSettings = deepMergeProps([{..._settings.data.props}, exportsSettings])
+  const settings = { ..._settings, data: { ..._settings.data, MDXContent: MDXContentSettings, props: propsSettings } }
+
   const pages = await Promise.all(_pages.map(async p => {
-    const { MDXContent, exports: pageExports } = await toMdx(p.data.md)
-    const pageProps = {...p.data?.props, ...pageExports}
+    const { MDXContent, exports: exportsPage } = await toMdx(p.data.md)
+    const propsPage = deepMergeProps([{...p.data?.props}, exportsPage])
     // Don't do this map if you want only the exports of the curent page (not inherit from parent pages and settings)
-    const parentsProps = await Promise.all(p?.parents?.map(async parent => {
-      const { exports } = await toMdx(parent.data.md)
-      const parentProps = {...parent.data?.props, ...exports}
-      return parentProps
+    const propsParents = await Promise.all(p?.parents?.map(async parent => {
+      const { exports: exportsParent } = await toMdx(parent.data.md)
+      const propsParent = deepMergeProps([{...parent.data?.props}, exportsParent])
+      return propsParent
     })) || []
-    const propsCascade = [...parentsProps, pageProps]
-    const props = deepmerge.all(propsCascade)
-    return { ...p, MDXContent, ...props }
+    const props = deepMergeProps([...propsParents, propsPage])
+    return { ...p, data: { ...p.data, MDXContent, props } }
   }))
 
   return pages.map(page => {
+    // console.log(page.data.path)
     return { params: { path: page.data.path === '' ? undefined : page.data.path }, props: { settings, pages, page, files, paths, websiteTree } }
   })
 
