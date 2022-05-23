@@ -1,4 +1,5 @@
 import { existsSync, promises as fs } from "fs";
+import { copy } from "fs-extra";
 import "dotenv/config";
 import { unified } from "unified";
 import { u } from "unist-builder";
@@ -7,6 +8,7 @@ import { map as mapAST } from "unist-util-map";
 import { is } from "unist-util-is";
 // import { filter as filterAST } from "unist-util-filter";
 import deepmerge from "deepmerge";
+import probeImageSize from "probe-image-size";
 import {
   rootId,
   filesInfo,
@@ -27,10 +29,22 @@ import {
   slugifyPath,
   parseFileUrl,
   escapeRegExp,
-  deepMergeProps,
+  deepMergePropsSelf,
+  deepMergePropsAllPages,
 } from "../utils/index.mjs";
 
 const dirUserAssets = "user-assets";
+
+const probeFile = async (_fileObject) => {
+  let fileObject = _fileObject;
+  try {
+    const { url: _, ...probe } = await probeImageSize(fileObject.originalUrl);
+    return { ...fileObject, ...probe };
+  } catch (error) {
+    // console.error(error);
+    return fileObject;
+  }
+};
 
 export default async function (astroConfig) {
   // [ ] fetch notion pages
@@ -181,7 +195,7 @@ export default async function (astroConfig) {
 
     // Merge Notion properties with MDXExports for that page (=MDXExportsSelf).
     // Note: MDXExportsSelf contains 'exports' definitions and frontmatter already
-    const props = deepmerge.all([
+    const props = deepMergePropsSelf([
       ...propsArrayOfObjects,
       _MDXExportsSelf || {},
     ]);
@@ -213,7 +227,9 @@ export default async function (astroConfig) {
 
   // MAIN TRAVERSAL
   visitParents(tree, (node, ancestors) => {
-    const { raw } = node.data;
+    const { raw, props } = node.data;
+
+    if (props) node.data.props = deepMergePropsSelf([props]);
 
     // SETTINGS
     if (node.type === "root") {
@@ -228,14 +244,26 @@ export default async function (astroConfig) {
       node.data.headString = headBlock.data.inlinePlainText;
     }
 
+    //
+    // Record closest parent page
+    //
+    // let closestParentPage;
+
     // PAGES
     if (node.type === "page") {
       //
-      // Construct path from ancestors
+      // Construct path from ancestors -> the closest page is enough since tree is traversed from parent to children and modified in place
       //
+      // if (node.data.codeName.startsWith("_")) {
+      //   node.data.path = null;
+      // } else {
       for (let i = ancestors.length - 1; i >= 0; i--) {
         const a = ancestors[i];
-        if (a.type === "page") {
+        if (
+          a.type === "page"
+          // && !a.data.codeName.startsWith("_")
+        ) {
+          // closestParentPage = node;
           node.data.path = [a.data.path, node.data.path]
             .filter((z) => z) // remove empty paths e.g. the 'index' page to avoid leading or double  '/'
             .join("/");
@@ -243,18 +271,19 @@ export default async function (astroConfig) {
           i = -1;
         }
       }
+      // }
+
       //
-      // merge exports from parents to current page
+      // merge props from parents to current page
       //
       const parentsProps =
         ancestors.map((a) => a.data?.props).filter((z) => z) || [];
-      node.data.props = deepMergeProps([...parentsProps, node.data.props]);
 
-      // const parentsExports =
-      //   ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
-      // const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
-      // const exports = deepmerge.all(exportsCascade);
-      // node.data.MDXExports = exports;
+      node.data.props = deepMergePropsAllPages([
+        ...parentsProps,
+        node.data.props,
+      ]);
+
       //
       // Save a MAP of all the pages with the Notion ID, Notion URLs and our local path
       //
@@ -284,25 +313,29 @@ export default async function (astroConfig) {
     if (file) node.data.raw.file[raw.file.type].url = file.url;
 
     node.data.files = node.data.files || [];
-    Object.entries({ featuredImage, cover, icon, image, file }).forEach(
-      ([key, fileObject]) => {
-        if (fileObject) {
-          node.data[key] = fileObject; // assign data like: node.data.cover = cover;
-          node.data.files.push(fileObject);
-          allFiles.push(fileObject); // push files in an array to download everything at once after
+    Promise.all(
+      Object.entries({ featuredImage, cover, icon, image, file }).map(
+        async ([key, _fileObject]) => {
+          let fileObject = _fileObject;
 
-          // Also replace links in md
-          const localPath = fileObject.url;
-          const re = new RegExp(escapeRegExp(fileObject.originalUrl), "g");
+          if (fileObject) {
+            node.data[key] = fileObject; // assign data like: node.data.cover = cover;
+            node.data.files.push(fileObject);
+            allFiles.push(fileObject); // push files in an array to download everything at once after
 
-          if (typeof node.data.md === "string") {
-            node.data.md = node.data.md.replace(re, localPath);
-          }
-          if (typeof node.data.inlineMd === "string") {
-            node.data.inlineMd = node.data.inlineMd.replace(re, localPath);
+            // Also replace links in md
+            const localPath = fileObject.url;
+            const re = new RegExp(escapeRegExp(fileObject.originalUrl), "g");
+
+            if (typeof node.data.md === "string") {
+              node.data.md = node.data.md.replace(re, localPath);
+            }
+            if (typeof node.data.inlineMd === "string") {
+              node.data.inlineMd = node.data.inlineMd.replace(re, localPath);
+            }
           }
         }
-      }
+      )
     );
     // --- //
 
@@ -312,16 +345,18 @@ export default async function (astroConfig) {
   });
 
   // TODO: improve this. For example create a map of the downloads and the last modified date
-  await Promise.all(
-    allFiles.map(async (f) => {
+  allFiles = await Promise.all(
+    allFiles.map(async (_f) => {
+      const f = await probeFile(_f);
       await downloadFile(f);
       if (f.extension === ".zip") {
         await extractZip(f);
       }
+      return f;
     })
   );
 
-  // Replace URLs
+  // Replace Notion URLs for local ones
   visitParents(
     tree,
     (node) => node.type === "block" && node.data.inline?.length,
@@ -416,6 +451,10 @@ export default async function (astroConfig) {
   let pages = [];
   let settings;
   visitParents(tree, ["root", "page"], (node, ancestors) => {
+    // TODO HERE
+    // if (node.type === "page" && node.data.codeName.startsWith("_")) {
+    //   // do not add to pages list
+    // } else
     if (node.type === "page") {
       const parents = ancestors
         .filter((a) => a.type === "page" || a.type === "root")
@@ -433,17 +472,22 @@ export default async function (astroConfig) {
     websiteTree: tree,
   };
 
-  const filePath = "src/_data/poko.json";
-  const dir = filePath.split("/").slice(0, -1).join("/");
+  const filePathData = "src/_data/poko.json";
+  const dir = filePathData.split("/").slice(0, -1).join("/");
   const systemDir = `${process.cwd()}/${dir}`;
-  const systemPath = `${process.cwd()}/${filePath}`;
+  const systemPathData = `${process.cwd()}/${filePathData}`;
 
   if (!existsSync(systemDir)) {
     await fs.mkdir(systemDir);
-  } else if (existsSync(systemPath)) {
-    await fs.rm(systemPath);
+  } else if (existsSync(systemPathData)) {
+    await fs.rm(systemPathData);
   }
-  await fs.writeFile(systemPath, JSON.stringify(poko));
+  await fs.writeFile(systemPathData, JSON.stringify(poko));
+  // copy files to an 'src' based directory to be able to import and process them with 'astro-imagetools'
+  await copy(
+    `${process.cwd()}/public/${dirUserAssets}`,
+    `${process.cwd()}/${dir}/${dirUserAssets}`
+  );
 
   // throw "Auto Exit";
 

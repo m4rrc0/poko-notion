@@ -1,13 +1,15 @@
 ---
-import Debug from 'astro/debug';
+// import Debug from 'astro/debug';
 import deepmerge from 'deepmerge';
 import { visitParents } from "unist-util-visit-parents";
 // import { store, populateStore } from '@services/notionOne.js'
-import { notionHelpers, deepMergeProps } from "@utils";
+import { notionHelpers, deepMergePropsSelf, deepMergePropsAllPages } from "@utils";
 import * as layouts from '@layouts'
 import pokoComponents from '../components/components.jsx'
 import { toMdx } from '@services/notion.mjs'
 import poko from '@poko'
+
+import { renderImg } from "astro-imagetools/api";
 
 const { MDXPage, AstroPage } = layouts
 
@@ -15,30 +17,55 @@ export async function getStaticPaths() {
   // const filePath = "src/_data/poko.json";
   // const systemPath = `${process.cwd()}/${filePath}`;
 
+  // const _userAssets = await Astro.glob('../_data/user-assets/*.(jpeg|png|webp|gif|avif|tiff|svg|JPEG|PNG|WebP|GIF|AVIF|TIFF|SVG)');
+  // const userAssets = await Promise.all(_userAssets?.map(async (a) => {
+    //   console.log({ a })
+  //   const { link, style, img } = await renderImg({
+    //     src: a.default,
+  //     alt: 'something'
+  //   });
+  //   console.log({link, style, img})
+  //   return a
+  // }))
+  // console.log({ userAssets })
+
   // const poko = await import(systemPath)
-  const { settings: _settings, pages: _pages, files, paths, websiteTree } = poko
+  const { settings: _settings, pages: _pages, files: _files, paths, websiteTree } = poko
+
+  const _userAssets = await Astro.glob('../_data/user-assets/*.(jpeg|png|webp|gif|avif|tiff|JPEG|PNG|WebP|GIF|AVIF|TIFF)');
+  const userAssets = _userAssets?.map(a => a.default)
+  const files = _files.map(f => {
+    const name = f.filename.replace(f.extension, '')
+    const src = userAssets.find(a => a.match(`${name}@`))
+    return {...f, src}
+  })
+  // console.log({ _files })
+
+  // process.env.USERASSETS = files
 
   // TODO: loop recursively on tree instead of computing parent pages multiple times
 
   const { MDXContent: MDXContentSettings, exports: exportsSettings } = await toMdx(_settings.data.md)
-  const propsSettings = deepMergeProps([{..._settings.data.props}, exportsSettings])
+  const propsSettings = deepMergePropsSelf([{..._settings.data.props}, exportsSettings])
   const settings = { ..._settings, data: { ..._settings.data, MDXContent: MDXContentSettings, props: propsSettings } }
 
   const pages = await Promise.all(_pages.map(async p => {
     const { MDXContent, exports: exportsPage } = await toMdx(p.data.md)
-    const propsPage = deepMergeProps([{...p.data?.props}, exportsPage])
+    const propsPage = deepMergePropsSelf([{...p.data?.props}, exportsPage])
     // Don't do this map if you want only the exports of the curent page (not inherit from parent pages and settings)
     const propsParents = await Promise.all(p?.parents?.map(async parent => {
       const { exports: exportsParent } = await toMdx(parent.data.md)
-      const propsParent = deepMergeProps([{...parent.data?.props}, exportsParent])
+      const propsParent = deepMergePropsSelf([{...parent.data?.props}, exportsParent])
       return propsParent
     })) || []
-    const props = deepMergeProps([...propsParents, propsPage])
+    // console.log([...propsParents, propsPage])
+
+    const props = deepMergePropsAllPages([...propsParents, propsPage])
     return { ...p, data: { ...p.data, MDXContent, props } }
   }))
 
-  return pages.map(page => {
-    // console.log(page.data.path)
+  return pages.filter(page => page.data.props.status !== 'draft').map(page => {
+
     return { params: { path: page.data.path === '' ? undefined : page.data.path }, props: { settings, pages, page, files, paths, websiteTree } }
   })
 

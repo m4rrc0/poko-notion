@@ -2,28 +2,26 @@
 // import Debug from 'astro/debug';
 import { notionHelpers } from "@utils";
 import { SkeletonPage } from '@layouts'
-import pokoComponents from '../components/components.jsx'
+import pokoComponents, { addProps } from '../components/components.jsx'
 // import { toMdx } from '@services/notion.mjs'
 
 const { pathname } = Astro.canonicalURL;
 const { settings, pages, page, files, paths, websiteTree } = Astro.props;
 
 const { headString } = settings.data || {}
-const { MDXContent, props: { metadata, components: _components, ..._props } } = page.data || {}
+const { MDXContent, props: { metadata, components: __components, ...__props } } = page.data || {}
+// console.log({__props})
 
-const components = {...pokoComponents, ..._components} // merge from poko-notion, settings, parents, page
-
-const props = {
-  ..._props,
-  poko: {
-    settings,
-    pages,
-    // page,
-    utils: { ...notionHelpers },
-  },
-  components,
+const _components = {...pokoComponents, ...__components}
+const _props = {
+  ...__props,
+  poko: { settings, pages, page, files, paths, websiteTree, utils: { ...notionHelpers } },
+  components: _components,
   metadata,
 }
+
+const components = addProps(_components, _props)
+const props = { ..._props, components }
 
 ---
 

@@ -7,6 +7,7 @@ import robotsTxt from "astro-robots-txt";
 import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 // import mdx from "@mdx-js/rollup";
 import preact from "@astrojs/preact";
+import { astroImageTools } from "astro-imagetools";
 import fetchAhead from "@m4rrc0/astro-fetch-ahead";
 
 // @type-check enabled!
@@ -26,8 +27,10 @@ export default defineConfig({
     ...(site ? [sitemap(), robotsTxt()] : []),
     preact(),
     fetchAhead(),
+    astroImageTools,
   ],
   vite: {
+    // assetsInclude: ["**/*.png"],
     // NOTE: necessary for astro-icon apparently (https://github.com/natemoo-re/astro-icon)
     // ssr: {
     //   external: ['svgo'],

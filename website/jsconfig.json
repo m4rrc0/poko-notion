@@ -19,6 +19,7 @@
       "@styles/*": ["src/styles/*"],
       "@utils/*": ["src/utils/*"],
       "@utils": ["src/utils/index.mjs"],
+      "@public/*": ["public/*"],
       "@poko": ["src/_data/poko.json"]
     }
   }

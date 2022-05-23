@@ -1,10 +1,15 @@
-import preact from "preact";
+import * as preact from "preact";
 import * as preactHooks from "preact/hooks";
 import { visitParents } from "unist-util-visit-parents";
 // import { store } from "@services/notion.js";
 import { notionHelpers } from "@src/utils/index.mjs";
 import poko from "@poko";
 import Anon from "@components/Anon.jsx";
+// import { Img } from "astro-imagetools/components";
+// import { renderImg } from "astro-imagetools/api";
+// import * as userAssets from "../_data/*";
+
+// console.log({ userAssets });
 
 const { websiteTree } = poko;
 
@@ -21,6 +26,20 @@ const getBlock = (tree, blockId) => {
   return _block;
 };
 
+export const addProps = (components, defaultProps) => {
+  const withProps = {};
+
+  for (const [key, Component] of Object.entries(components)) {
+    if (typeof Component === "function") {
+      withProps[key] = (props) => <Component {...defaultProps} {...props} />;
+    } else {
+      withProps[key] = Component;
+    }
+  }
+
+  return withProps;
+};
+
 const Poko = ({ children, components, ...props }) => {
   return children({ poko, components, ...props });
 };
@@ -28,12 +47,98 @@ const Preact = ({ children, components, ...props }) => {
   return children({ ...preact, ...preactHooks, components, ...props });
 };
 
-const CollectionWrapper = (props) => <div class="grid" {...props} />;
+const ImgLazy = ({
+  children,
+  components,
+  src: _src,
+  alt,
+  poko: { files },
+  img: _img,
+  ...props
+}) => {
+  const file = files.find((f) => f.url === _src);
+  const { width, height } = file || {};
+  const src = file?.src || _src;
+  return (
+    <div {...{ class: "img-lazy-wrapper" }}>
+      <img
+        {...{
+          src,
+          alt,
+          loading: "lazy",
+          width,
+          height,
+          ..._img,
+          class: `img-lazy ${_img?.class || ""}`,
+          onload: `this.parentNode.style.backgroundColor = 'transparent';this.style.opacity = 1;${
+            props?.img?.onload || ""
+          }`,
+        }}
+      />
+    </div>
+  );
+};
+
+const NavPicoCss = ({ index, pages }) => {
+  return (
+    <nav class="container">
+      <ul>
+        {index && index.title && (
+          <li>
+            <strong>
+              <a href={index.href}>{index.title}</a>
+            </strong>
+          </li>
+        )}
+      </ul>
+
+      <ul>
+        {pages &&
+          pages.map(({ href, title, codeName }) => (
+            <li>
+              <a {...{ href }}>{title || codeName}</a>
+            </li>
+          ))}
+      </ul>
+    </nav>
+  );
+};
+
+const Nav = ({ index, pages }) => {
+  return (
+    <nav>
+      <ul>
+        {index && index.title && (
+          <li>
+            <strong>
+              <a href={index.href}>{index.title}</a>
+            </strong>
+          </li>
+        )}
+      </ul>
+      <ul>
+        {pages &&
+          pages.map(({ href, title, codeName }) => (
+            <li>
+              <a {...{ href }}>{title || codeName}</a>
+            </li>
+          ))}
+      </ul>
+    </nav>
+  );
+};
+
+// const CollectionWrapper = (props) => <div class="grid" {...props} />;
+const CollectionWrapper = ({ children, ...props }) => (
+  <div class="grid" style="--width-column: 15rem; --gap: 1rem;" {...props}>
+    <div>{children}</div>
+  </div>
+);
 const CollectionArticle = ({ collection, ...props }) => {
   const titlePropName = props?.data?.raw?._titlePropName;
   const title = props.data.props[titlePropName];
   const href = `/${props.data.path}`;
-  // console.log(title);
+  console.log(props.data.props.title, props.data.path);
   return (
     <article>
       <h3>
@@ -68,46 +173,45 @@ const components = {
   //   const href = notionHelpers.convertHref(_href, poko);
   //   return <a {...{ ...props, href }} />;
   // },
-  a: ({ children, components, href, ...props }) => <Anon {...{ tag: 'a', children, href, ...props?.a }} />, // prettier-ignore
-  blockquote: ({ children, components, ...props }) => <Anon {...{ tag: 'blockquote', children, ...props?.blockquote }} />, // prettier-ignore
-  br: ({ children, components, ...props }) => <Anon {...{ tag: 'br', children, ...props?.br }} />, // prettier-ignore
-  code: ({ children, components, ...props }) => <Anon {...{ tag: 'code', children, ...props?.code }} />, // prettier-ignore
-  em: ({ children, components, ...props }) => <Anon {...{ tag: 'em', children, ...props?.em }} />, // prettier-ignore
-  h1: ({ children, components, ...props }) => <Anon {...{ tag: 'h1', children, ...props?.h1 }} />, // prettier-ignore
-  h2: ({ children, components, ...props }) => <Anon {...{ tag: 'h2', children, ...props?.h2 }} />, // prettier-ignore
-  h3: ({ children, components, ...props }) => <Anon {...{ tag: 'h3', children, ...props?.h3 }} />, // prettier-ignore
-  h4: ({ children, components, ...props }) => <Anon {...{ tag: 'h4', children, ...props?.h4 }} />, // prettier-ignore
-  h5: ({ children, components, ...props }) => <Anon {...{ tag: 'h5', children, ...props?.h5 }} />, // prettier-ignore
-  h6: ({ children, components, ...props }) => <Anon {...{ tag: 'h6', children, ...props?.h6 }} />, // prettier-ignore
-  hr: ({ children, components, ...props }) => <Anon {...{ tag: 'hr', children, ...props?.hr }} />, // prettier-ignore
-  img: ({ children, components, ...props }) => <Anon {...{ tag: 'img', children, ...props?.img }} />, // prettier-ignore
-  li: ({ children, components, ...props }) => <Anon {...{ tag: 'li', children, ...props?.li }} />, // prettier-ignore
-  ol: ({ children, components, ...props }) => <Anon {...{ tag: 'ol', children, ...props?.ol }} />, // prettier-ignore
-  p: ({ children, components, ...props }) => <Anon {...{ tag: 'p', children, ...props?.p }} />, // prettier-ignore
-  pre: ({ children, components, ...props }) => <Anon {...{ tag: 'pre', children, ...props?.pre }} />, // prettier-ignore
-  strong: ({ children, components, ...props }) => <Anon {...{ tag: 'strong', children, ...props?.strong }} />, // prettier-ignore
-  ul: ({ children, components, ...props }) => <Anon {...{ tag: 'ul', children, ...props?.ul }} />, // prettier-ignore
+  a: ({ children, components, href, ...props }) => <Anon {...{ tag: 'a', href, ...props?.a }}>{children}</Anon>, // prettier-ignore
+  blockquote: ({ children, components, ...props }) => <Anon {...{ tag: 'blockquote', ...props?.blockquote }}>{children}</Anon>, // prettier-ignore
+  br: ({ children, components, ...props }) => <Anon {...{ tag: 'br', ...props?.br }}>{children}</Anon>, // prettier-ignore
+  code: ({ children, components, ...props }) => <Anon {...{ tag: 'code', ...props?.code }}>{children}</Anon>, // prettier-ignore
+  em: ({ children, components, ...props }) => <Anon {...{ tag: 'em', ...props?.em }}>{children}</Anon>, // prettier-ignore
+  h1: ({ children, components, ...props }) => <Anon {...{ tag: 'h1', ...props?.h1 }}>{children}</Anon>, // prettier-ignore
+  h2: ({ children, components, ...props }) => <Anon {...{ tag: 'h2', ...props?.h2 }}>{children}</Anon>, // prettier-ignore
+  h3: ({ children, components, ...props }) => <Anon {...{ tag: 'h3', ...props?.h3 }}>{children}</Anon>, // prettier-ignore
+  h4: ({ children, components, ...props }) => <Anon {...{ tag: 'h4', ...props?.h4 }}>{children}</Anon>, // prettier-ignore
+  h5: ({ children, components, ...props }) => <Anon {...{ tag: 'h5', ...props?.h5 }}>{children}</Anon>, // prettier-ignore
+  h6: ({ children, components, ...props }) => <Anon {...{ tag: 'h6', ...props?.h6 }}>{children}</Anon>, // prettier-ignore
+  hr: ({ children, components, ...props }) => <Anon {...{ tag: 'hr', ...props?.hr }}>{children}</Anon>, // prettier-ignore
+  img: ({ children, components, src, alt, img: _img, ...props }) => <Anon {...{ tag: 'img', src, alt, ..._img }}>{children}</Anon>, // prettier-ignore
+  // img: 'ImgLazy', // prettier-ignore
+  li: ({ children, components, ...props }) => <Anon {...{ tag: 'li', ...props?.li }}>{children}</Anon>, // prettier-ignore
+  ol: ({ children, components, ...props }) => <Anon {...{ tag: 'ol', ...props?.ol }}>{children}</Anon>, // prettier-ignore
+  p: ({ children, components, ...props }) => <Anon {...{ tag: 'p', ...props?.p }}>{children}</Anon>, // prettier-ignore
+  pre: ({ children, components, ...props }) => <Anon {...{ tag: 'pre', ...props?.pre }}>{children}</Anon>, // prettier-ignore
+  strong: ({ children, components, ...props }) => <Anon {...{ tag: 'strong', ...props?.strong }}>{children}</Anon>, // prettier-ignore
+  ul: ({ children, components, ...props }) => <Anon {...{ tag: 'ul', ...props?.ul }}>{children}</Anon>, // prettier-ignore
   // With remark-gfm (see guide) you can also use:
-  del: ({ children, components, ...props }) => <Anon {...{ tag: 'del', children, ...props?.del }} />, // prettier-ignore
-  input: ({ children, components, ...props }) => <Anon {...{ tag: 'input', children, ...props?.input }} />, // prettier-ignore
-  section: ({ children, components, ...props }) => <Anon {...{ tag: 'section', children, ...props?.section }} />, // prettier-ignore
-  sup: ({ children, components, ...props }) => <Anon {...{ tag: 'sup', children, ...props?.sup }} />, // prettier-ignore
-  table: ({ children, components, ...props }) => <Anon {...{ tag: 'table', children, ...props?.table }} />, // prettier-ignore
-  tbody: ({ children, components, ...props }) => <Anon {...{ tag: 'tbody', children, ...props?.tbody }} />, // prettier-ignore
-  td: ({ children, components, ...props }) => <Anon {...{ tag: 'td', children, ...props?.td }} />, // prettier-ignore
-  th: ({ children, components, ...props }) => <Anon {...{ tag: 'th', children, ...props?.th }} />, // prettier-ignore
-  thead: ({ children, components, ...props }) => <Anon {...{ tag: 'thead', children, ...props?.thead }} />, // prettier-ignore
-  tr: ({ children, components, ...props }) => <Anon {...{ tag: 'tr', children, ...props?.tr }} />, // prettier-ignore
+  del: ({ children, components, ...props }) => <Anon {...{ tag: 'del', ...props?.del }}>{children}</Anon>, // prettier-ignore
+  input: ({ children, components, ...props }) => <Anon {...{ tag: 'input', ...props?.input }}>{children}</Anon>, // prettier-ignore
+  section: ({ children, components, ...props }) => <Anon {...{ tag: 'section', ...props?.section }}>{children}</Anon>, // prettier-ignore
+  sup: ({ children, components, ...props }) => <Anon {...{ tag: 'sup', ...props?.sup }}>{children}</Anon>, // prettier-ignore
+  table: ({ children, components, ...props }) => <Anon {...{ tag: 'table', ...props?.table }}>{children}</Anon>, // prettier-ignore
+  tbody: ({ children, components, ...props }) => <Anon {...{ tag: 'tbody', ...props?.tbody }}>{children}</Anon>, // prettier-ignore
+  td: ({ children, components, ...props }) => <Anon {...{ tag: 'td', ...props?.td }}>{children}</Anon>, // prettier-ignore
+  th: ({ children, components, ...props }) => <Anon {...{ tag: 'th', ...props?.th }}>{children}</Anon>, // prettier-ignore
+  thead: ({ children, components, ...props }) => <Anon {...{ tag: 'thead', ...props?.thead }}>{children}</Anon>, // prettier-ignore
+  tr: ({ children, components, ...props }) => <Anon {...{ tag: 'tr', ...props?.tr }}>{children}</Anon>, // prettier-ignore
   // Other normal elements
-  main: ({ children, components, ...props }) => <Anon {...{ tag: 'main', children, ...props?.main }} />, // prettier-ignore
-  footer: ({ children, components, ...props }) => <Anon {...{ tag: 'footer', children, ...props?.footer }} />, // prettier-ignore
-  header: ({ children, components, ...props }) => <Anon {...{ tag: 'header', children, ...props?.header }} />, // prettier-ignore
-  // header: ({ children, components, ...props }) => {
-  //   // console.log({ children, props: props?.header})
-  //   return <Anon {...{ tag: 'header', children, ...props?.header }} />
-  // }, // prettier-ignore
-  aside: ({ children, components, ...props }) => <Anon {...{ tag: 'aside', children, ...props?.aside }} />, // prettier-ignore
-  article: ({ children, components, ...props }) => <Anon {...{ tag: 'article', children, ...props?.article }} />, // prettier-ignore
+  main: ({ children, components, ...props }) => <Anon {...{ tag: 'main', ...props?.main }}>{children}</Anon>, // prettier-ignore
+  footer: ({ children, components, ...props }) => <Anon {...{ tag: 'footer', ...props?.footer }}>{children}</Anon>, // prettier-ignore
+  header: ({ children, components, ...props }) => <Anon {...{ tag: 'header', ...props?.header }}>{children}</Anon>, // prettier-ignore
+  aside: ({ children, components, ...props }) => <Anon {...{ tag: 'aside', ...props?.aside }}>{children}</Anon>, // prettier-ignore
+  article: ({ children, components, ...props }) => <Anon {...{ tag: 'article', ...props?.article }}>{children}</Anon>, // prettier-ignore
+  nav: ({ children, components, ...props }) => <Anon {...{ tag: 'nav', ...props?.nav }}>{children}</Anon>, // prettier-ignore
+  // nav: Nav,
 
   // --- SPECIAL COMPONENTS --- //
   wrapper: ({ children, components, ...props }) => {
@@ -136,6 +240,9 @@ const components = {
   },
   Poko,
   Preact,
+  ImgLazy,
+  NavPicoCss,
+  Nav,
   Menu: ({ children, components, ...props }) => {
     const topLevelPages = poko?.websiteTree?.children
       .filter((block) => {
@@ -152,31 +259,10 @@ const components = {
           href: `/${page.data.path}`,
         };
       });
-    const indexPage = topLevelPages.find((p) => p.codeName === "index");
-    const otherPages = topLevelPages.filter((p) => p.codeName !== "index");
+    const index = topLevelPages.find((p) => p.codeName === "index");
+    const pages = topLevelPages.filter((p) => p.codeName !== "index");
 
-    return (
-      <nav class="container">
-        <ul>
-          {indexPage && indexPage.title && (
-            <li>
-              <strong>
-                <a href={indexPage.href}>{indexPage.title}</a>
-              </strong>
-            </li>
-          )}
-        </ul>
-
-        <ul>
-          {otherPages &&
-            otherPages.map(({ href, title, codeName }) => (
-              <li>
-                <a {...{ href }}>{title || codeName}</a>
-              </li>
-            ))}
-        </ul>
-      </nav>
-    );
+    return <components.nav {...{ index, pages }} />;
   },
   ChildPage: () => null,
   BlockLinkPage: ({ pageId }) => {
@@ -212,11 +298,13 @@ const components = {
     const collection = getColl();
 
     return collection ? (
-      <CollectionWrapper>
-        {collection?.children?.map((props) => (
-          <CollectionArticle {...{ collection, ...props }} />
+      <props.components.CollectionWrapper>
+        {collection?.children?.map((_props) => (
+          <props.components.CollectionArticle
+            {...{ collection: { ...collection, ...props }, ..._props }}
+          />
         ))}
-      </CollectionWrapper>
+      </props.components.CollectionWrapper>
     ) : null;
   },
   CollectionWrapper,

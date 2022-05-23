@@ -36,6 +36,7 @@
     "@mdx-js/rollup": "^2.1.1",
     "@notionhq/client": "^1.0.4",
     "@originjs/vite-plugin-commonjs": "^1.0.3",
+    "astro-imagetools": "^0.6.5",
     "astro-robots-txt": "^0.1.15",
     "deepmerge": "^4.2.2",
     "dotenv": "^16.0.0",

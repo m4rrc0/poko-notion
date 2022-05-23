@@ -6,10 +6,12 @@ import { Anon } from '@components'
 
 const {
   path,
-  htmlProps = {},
-  bodyProps = {},
-  headElems: headElemsRaw,
-  bodyElems: bodyElemsRaw,
+  html = {},
+  body = {},
+  head = {},
+  style = '',
+  headChildren: headChildrenRaw,
+  bodyChildren: bodyChildrenRaw,
   metadata,
   // components,
 } = Astro.props || {}
@@ -49,7 +51,7 @@ const mapObjectToArray = (obj, varName) => {
       `Error in exports ${varName} on page ${path}.\n`,
       `${JSON.stringify(obj)} is not an array or object.`)
     
-    return undefined
+    return obj
   }
   arr = arr.map(el => {
       if (typeof el === 'object' && !el?.tag) {
@@ -64,9 +66,8 @@ const mapObjectToArray = (obj, varName) => {
 
 const titleComposed = title ? `${title}${siteName ? ` | ${siteName}` : ''}` : siteName
 const restTags = mapObjectToArray(restMetadata, 'restMetadata')
-const headElems = mapObjectToArray(headElemsRaw, 'headElemsRaw')
-const bodyElems = mapObjectToArray(bodyElemsRaw, 'bodyElemsRaw')
-  
+const headChildren = mapObjectToArray(headChildrenRaw, 'headChildrenRaw')
+const bodyChildren = mapObjectToArray(bodyChildrenRaw, 'bodyChildrenRaw')
 
 // "metadata": {
 //       "title": "This blog is monumental",
@@ -91,8 +92,8 @@ const bodyElems = mapObjectToArray(bodyElemsRaw, 'bodyElemsRaw')
 
 ---
 
-<html {lang} {...htmlProps}>
-  <head>
+<html {lang} {...html}>
+  <head {...head}>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -116,26 +117,31 @@ const bodyElems = mapObjectToArray(bodyElemsRaw, 'bodyElemsRaw')
       <link {...el} />
     ))}
 
-    {Array.isArray(restTags) && restTags.length > 0 && restTags.map(el => (
-      <Anon {...el} />
+    {Array.isArray(restTags) && restTags.length > 0 && restTags.map(({children, ...el}) => (
+      <Anon {...el} >{children}</Anon>
     ))}
 
-    {Array.isArray(headElems) && headElems.length > 0 && headElems.map(el => (
-      <Anon {...el} />
+    {Array.isArray(headChildren) && headChildren.length > 0 && headChildren.map(({children, ...el}) => (
+      <Anon {...el}>{children}</Anon>
     ))}
 
     <link rel="stylesheet" href="/user-styles.css" />
 
     <slot name="head" />
+
+    <Fragment set:html={`<style class="style-page" type="text/css">${style}</style>`} />
+
   </head>
-  <body {...bodyProps}>
+
+  <body {...body}>
     <slot />
     <slot name="body"/>
 
-    {Array.isArray(bodyElems) && bodyElems.length > 0 && bodyElems.map(El => typeof El === 'object' ? (
-      <Anon {...El} />
+    {Array.isArray(bodyChildren) && bodyChildren.length > 0 && bodyChildren.map(El => typeof El === 'object' ? (
+      <Anon {...El} >{El.children}</Anon>
     ) : <El />)}
 
     <!-- <script src="/assets/js/instant.page.js" defer type="module"></script> -->
   </body>
 </html>
+

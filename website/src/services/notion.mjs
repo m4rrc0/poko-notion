@@ -40,7 +40,7 @@ export function filesInfo(blockOrPage, localDir = dirUserAssets) {
   let raw = blockOrPage?.data?.raw || blockOrPage;
   const { last_edited_time } = raw;
 
-  const commons = { last_edited_time };
+  const commons = { last_edited_time, blockId: raw.id };
 
   const isPage = raw?.object === "page" || raw?.object === "database";
   const blockType = raw?.type;
@@ -174,25 +174,26 @@ export function transformRichTextToPlainText(_val) {
 }
 
 export function transformProp([_key, _val] = [], role) {
-  if (role === "collection") {
-    return { [_key]: _val };
-  }
+  let key = _key;
   // name === _key
   // not sure id is useful
   // type tells us where to find the actual value
   const { id, name, type } = _val;
   let val = _val[type];
 
-  if (type === "title" || type === "rich_text") {
+  if (role === "collection") {
+    // key = `collection.${_key}`;
+    val = _val;
+  } else if (type === "title" || type === "rich_text") {
     // title can be a string or a rich_text field
-    // console.log({ type, _key, val });
+    // console.log({ type, key, val });
     // console.dir(val, { depth: null });
 
     val = transformRichTextToPlainText(val);
   } else if (type === "multi_select" && Array.isArray(val.options)) {
     val = val.options.map(({ name }) => name);
-  } else if (type === "select" && Array.isArray(val.options)) {
-    val = val.options[0].name;
+  } else if (type === "select") {
+    val = val?.name;
   } else if (type === "files") {
     val = val.map((f) => {
       const {
@@ -209,19 +210,19 @@ export function transformProp([_key, _val] = [], role) {
     // TODO: handle more types
     // val = _val[type];
     //
-    // console.log({ type, _key, _val, val });
+    // console.log({ type, key, _val, val });
   }
 
   // ?? TODO: map notion prop types to own types???
   // All props types: "title", "rich_text", "number", "select", "multi_select", "date", "people", "files", "checkbox", "url", "email", "phone_number", "formula", "relation", "rollup", "created_time", "created_by", "last_edited_time", "last_edited_by",
 
-  if (_key.match(/\./)) {
+  if (key.match(/\./)) {
     let obj = {};
-    _set(obj, _key, val);
+    _set(obj, key, val);
     return obj;
   }
 
-  return { [_key]: val };
+  return { [key]: val };
 }
 
 // TODO HERE

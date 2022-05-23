@@ -52,67 +52,80 @@ export function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
 }
 
-export const deepMergeProps = (elements = []) => {
-  const [settingsProps, ...parentsProps] = elements;
-  const selfProps =
-    parentsProps.length > 1
-      ? parentsProps[parentsProps.length - 1]
-      : { ...settingsProps };
+export const deepMergePropsSelf = (arrOfPropsObj) => {
+  return deepmerge.all(arrOfPropsObj);
+  // const { self, ...props } = deepmerge.all(arrOfPropsObj);
+  // return {
+  //   ...props,
+  //   self: deepmerge(self || {}, props || {}),
+  // };
+};
 
-  const {
-    metadata: allMetadata,
-    raw: allRaw,
-    title: allTitle,
-    components,
-    ...allMerged
-  } = deepmerge.all(elements);
+export const deepMergePropsAllPages = (_arrOfPropsObj) => {
+  if (!Array.isArray(_arrOfPropsObj)) {
+    throw "Trying to merge array of props but not an array";
+  }
+  if (_arrOfPropsObj.length === 0) {
+    console.error("You are trying to merge props from an empty array");
+    return {};
+  }
+  if (_arrOfPropsObj.length === 1) {
+    // These are only the settings
+    return deepmerge.all(_arrOfPropsObj);
+  }
 
-  // Scan for possible components among exports and merge on the 'components' prop later
-  const possibleComponents = Object.entries(allMerged).reduce(
-    (prev, [key, val]) => {
-      const next = (typeof val).match(/function|string/) ? { [key]: val } : {};
-      return { ...prev, ...next };
-    },
-    {}
-  );
+  let prev_children = undefined;
+  // TODO: merge _self into props BUT remove what were passe from parents' _self ??
+  // let prev_self = undefined;
+  const arrOfPropsObj = _arrOfPropsObj
+    .filter((p) => p.title) // remove non-pages from the list
+    .map((propsObj, i, arr) => {
+      const isSettings = i === 0;
+      const isSelf = i === arr.length - 1;
 
-  const metadata = deepmerge(
-    settingsProps.metadata || {},
-    selfProps.metadata || {}
-  );
+      const {
+        raw,
+        self,
+        _self,
+        _children,
+        title,
+        metadata,
+        components,
+        ...restProps
+      } = propsObj;
 
-  return {
-    ...allMerged,
-    components: {
-      ...components,
-      ...possibleComponents,
-    },
-    raw: selfProps.raw,
-    title: selfProps.title,
-    metadata,
-    self: selfProps,
-  };
+      const currentProps = deepmerge.all([
+        { ...prev_children }, // merge the _children prop from a parent
+        (isSettings || isSelf) && metadata ? { metadata } : {}, // only merge current metadata with the global ones from settings
+        // these next props are not merged. Only keep the value of the current page.
+        isSelf && raw ? { raw } : {},
+        isSelf && self ? { self } : {},
+        isSelf && _self ? { _self } : {},
+        isSelf && _children ? { _children } : {},
+        isSelf && title ? { title } : {},
+        // Everything else is merged
+        restProps,
+      ]);
 
-  //   const parentsExports =
-  //   ancestors.map((a) => a.data?.MDXExportsSelf).filter((z) => z) || [];
-  // const exportsCascade = [...parentsExports, node.data?.MDXExportsSelf];
-  // const exports = deepmerge.all(exportsCascade);
+      prev_children = _children;
 
-  //
+      const possibleComponentsAdded = Object.entries(currentProps).reduce(
+        (prev, [key, val]) => {
+          const isFunction = typeof val === "function";
+          const hasCompName =
+            typeof val === "string" &&
+            val.match(
+              /^[A-Z]|wrapper|a|abbr|address|area|article|aside|audio|b|base|bdi|bdo|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|embed|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|head|header|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|link|main|map|mark|meta|meter|nav|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|rp|rt|ruby|s|samp|script|section|select|small|source|span|strong|style|sub|summary|sup|svg|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|u|ul|var|video|wbr/
+            );
 
-  // const settingsMDX = await toMdx(_settings.data.md)
-  // const settings = { ..._settings, data: { ..._settings.data, ...settingsMDX} }
-  // const pages = await Promise.all(_pages.map(async p => {
-  //   const { MDXContent, exports: pageExports } = await toMdx(p.data.md)
-  //   const pageProps = {...p.data?.props, ...pageExports}
-  //   // Don't do this map if you want only the exports of the curent page (not inherit from parent pages and settings)
-  //   const parentsProps = await Promise.all(p?.parents?.map(async parent => {
-  //     const { exports } = await toMdx(parent.data.md)
-  //     const parentProps = {...parent.data?.props, ...exports}
-  //     return parentProps
-  //   })) || []
-  //   const propsCascade = [...parentsProps, pageProps]
-  //   const props = deepmerge.all(propsCascade)
-  //   return { ...p, MDXContent, ...props }
-  // }))
+          const next = isFunction || hasCompName ? { [key]: val } : {};
+          return { ...prev, ...next };
+        },
+        { ...components }
+      );
+
+      return { ...currentProps, components: possibleComponentsAdded };
+    });
+
+  return deepmerge.all(arrOfPropsObj);
 };
