@@ -16,10 +16,5 @@
     "fetch:once": "npm run fetch:once --workspace=website",
     "fetch:watch": "npm run fetch:watch --workspace=website",
     "dev:watch": "npm run dev:watch --workspace=website"
-  },
-  "dependencies": {
-    "fs-extra": "^10.1.0",
-    "lodash.get": "^4.4.2",
-    "probe-image-size": "^7.2.3"
   }
 }
