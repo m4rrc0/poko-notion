@@ -3,15 +3,13 @@ import * as preactHooks from "preact/hooks";
 import { visitParents } from "unist-util-visit-parents";
 // import { store } from "@services/notion.js";
 import { notionHelpers } from "@src/utils/index.mjs";
-import poko from "@poko";
+// import poko from "@poko";
 import Anon from "@components/Anon.jsx";
 // import { Img } from "astro-imagetools/components";
 // import { renderImg } from "astro-imagetools/api";
 // import * as userAssets from "../_data/*";
 
-// console.log({ userAssets });
-
-const { websiteTree } = poko;
+// const { websiteTree } = poko;
 
 const getBlock = (tree, blockId) => {
   let _block;
@@ -24,6 +22,24 @@ const getBlock = (tree, blockId) => {
   );
   // We can get an 'undefined' collection object if User uses a DB view
   return _block;
+};
+const getCollection = ({ tree, blockId, collectionName }) => {
+  let _collection;
+  visitParents(
+    tree,
+    (node) => node.data.id === blockId,
+    (node) => {
+      visitParents(
+        node,
+        (_node) => _node.data.codeName === collectionName,
+        (_node) => {
+          _collection = _node;
+        }
+      );
+    }
+  );
+  // We can get an 'undefined' collection object if User uses a DB view
+  return _collection;
 };
 
 export const addProps = (components, defaultProps) => {
@@ -40,9 +56,9 @@ export const addProps = (components, defaultProps) => {
   return withProps;
 };
 
-const Poko = ({ children, components, ...props }) => {
-  return children({ poko, components, ...props });
-};
+// const Poko = ({ children, components, ...props }) => {
+//   return children({ poko, components, ...props });
+// };
 const Preact = ({ children, components, ...props }) => {
   return children({ ...preact, ...preactHooks, components, ...props });
 };
@@ -50,15 +66,17 @@ const Preact = ({ children, components, ...props }) => {
 const ImgLazy = ({
   children,
   components,
-  src: _src,
-  alt,
+  url, // in case we pass it a fileObject
+  src: _src, // in case it is generated from md and passed an src automatically
+  alt = "",
   poko: { files },
   img: _img,
   ...props
 }) => {
-  const file = files.find((f) => f.url === _src);
+  const file = files.find((f) => f.url === (_src || url));
+  // console.log({ file });
   const { width, height } = file || {};
-  const src = file?.src || _src;
+  const src = file?.src || _src || url;
   return (
     <div {...{ class: "img-lazy-wrapper" }}>
       <img
@@ -71,7 +89,7 @@ const ImgLazy = ({
           ..._img,
           class: `img-lazy ${_img?.class || ""}`,
           onload: `this.parentNode.style.backgroundColor = 'transparent';this.style.opacity = 1;${
-            props?.img?.onload || ""
+            _img?.onload || ""
           }`,
         }}
       />
@@ -134,18 +152,49 @@ const CollectionWrapper = ({ children, ...props }) => (
     <div>{children}</div>
   </div>
 );
-const CollectionArticle = ({ collection, ...props }) => {
-  const titlePropName = props?.data?.raw?._titlePropName;
-  const title = props.data.props[titlePropName];
-  const href = `/${props.data.path}`;
-  console.log(props.data.props.title, props.data.path);
+const CollectionArticle = ({ children }) => {
   return (
-    <article>
-      <h3>
-        <a {...{ href }}>{title}</a>
-      </h3>
-    </article>
+    <components.article
+      {...{
+        article: {
+          class: "box shadowy",
+          style: "max-width: calc(var(--width-column) * 1.5)",
+        },
+      }}
+    >
+      {children}
+    </components.article>
   );
+};
+const CollectionArticleFeaturedImage = ({
+  components,
+  poko,
+  featuredImage,
+}) => {
+  return featuredImage ? (
+    <components.ImgLazy {...{ poko, ...featuredImage }} />
+  ) : null;
+};
+const CollectionArticleHeading = ({ components, href, heading }) => {
+  return href && heading ? (
+    <components.h2>
+      <components.a {...{ href }}>{heading}</components.a>
+    </components.h2>
+  ) : null;
+};
+const CollectionArticleFooter = ({ components, datePublished, author }) => {
+  return datePublished || author ? (
+    <div class="cluster">
+      <div>
+        {datePublished ? (
+          <components.p>
+            On <time datetime={datePublished}>{datePublished}</time>
+          </components.p>
+        ) : null}
+        {author ? <components.p>by {author}</components.p> : null}
+      </div>
+    </div>
+  ) : null;
 };
 // const ColumnsWrapper = (props) => <div class="grid" {...props} />;
 // const Col = ({ ...block }) => {
@@ -238,12 +287,12 @@ const components = {
       </>
     );
   },
-  Poko,
+  // Poko,
   Preact,
   ImgLazy,
   NavPicoCss,
   Nav,
-  Menu: ({ children, components, ...props }) => {
+  Menu: ({ children, components, poko, ...props }) => {
     const topLevelPages = poko?.websiteTree?.children
       .filter((block) => {
         return block.data.role === "page" || block.data.role === "collection";
@@ -265,7 +314,7 @@ const components = {
     return <components.nav {...{ index, pages }} />;
   },
   ChildPage: () => null,
-  BlockLinkPage: ({ pageId }) => {
+  BlockLinkPage: ({ poko, pageId }) => {
     const page = poko.pages.find((p) => p.data.id === pageId);
     return (
       <a
@@ -274,41 +323,70 @@ const components = {
       />
     );
   },
-  Collection: ({ ...props }) => {
+  Collection: ({ blockId, collectionName, components, poko, ...propsPage }) => {
     // Need to find the page that is a child of this block
-    const { blockId, collectionName } = props;
-    const getColl = () => {
-      let _collection;
-      visitParents(
-        websiteTree,
-        (node) => node.data.id === blockId,
-        (node) => {
-          visitParents(
-            websiteTree,
-            (node) => node.data.codeName === collectionName,
-            (node) => {
-              _collection = node;
-            }
-          );
-        }
-      );
-      // We can get an 'undefined' collection object if User uses a DB view
-      return _collection;
-    };
-    const collection = getColl();
+    const collection = getCollection({
+      tree: poko.websiteTree,
+      blockId,
+      collectionName,
+    });
 
     return collection ? (
-      <props.components.CollectionWrapper>
-        {collection?.children?.map((_props) => (
-          <props.components.CollectionArticle
-            {...{ collection: { ...collection, ...props }, ..._props }}
-          />
-        ))}
-      </props.components.CollectionWrapper>
+      <components.CollectionWrapper>
+        {collection?.children?.map(({ data: { id: itemId } }) => {
+          const item = poko.pages.find((p) => p.data.id === itemId);
+          const { components: componentsItem, ...propsItem } = item.data.props;
+          const ld = propsItem.jsonld || {};
+          const featuredImage =
+            propsItem.featuredImage || ld.image?.[0] || ld.image;
+          const author = propsItem.author || ld.author.name;
+          const datePublished =
+            propsItem.datePublished || ld.datePublished?.start;
+
+          // console.log({
+          //   propsItem,
+          //   author,
+          //   datePublished,
+          //   // components
+          //   // featuredImage,
+          // });
+
+          return item ? (
+            <components.CollectionArticle
+              {...{
+                components,
+                poko,
+                featuredImage,
+                href: item.data.path,
+                heading: propsItem.title,
+                datePublished,
+                author,
+              }}
+            >
+              <components.CollectionArticleFeaturedImage
+                {...{ components, poko, featuredImage }}
+              />
+              <components.CollectionArticleHeading
+                {...{
+                  components,
+                  href: item.data.path,
+                  heading: propsItem.title,
+                }}
+              />
+              <components.CollectionArticleFooter
+                {...{ components, datePublished, author }}
+              />
+            </components.CollectionArticle>
+          ) : null;
+        })}
+      </components.CollectionWrapper>
     ) : null;
   },
   CollectionWrapper,
   CollectionArticle,
+  CollectionArticleFeaturedImage,
+  CollectionArticleHeading,
+  CollectionArticleFooter,
   // Columns: ({ blockId }) => {
   //   const block = getBlock(websiteTree, blockId);
   //   return block?.children?.length ? (
@@ -322,11 +400,12 @@ const components = {
   // ColumnsWrapper,
   // Col,
   // Column: () => null,
-  Test: () => {
-    return (
-      <Poko>{({ poko }) => <div>{poko?.pages?.[1]?.data?.codeName}</div>}</Poko>
-    );
-  },
+  //
+  // Test: () => {
+  //   return (
+  //     <Poko>{({ poko }) => <div>{poko?.pages?.[1]?.data?.codeName}</div>}</Poko>
+  //   );
+  // },
 };
 
 export default components;

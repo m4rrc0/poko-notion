@@ -1,6 +1,8 @@
 import { existsSync, promises as fs } from "fs";
 import { copy } from "fs-extra";
 import "dotenv/config";
+import _get from "lodash.get";
+import hash from "object-hash";
 import { unified } from "unified";
 import { u } from "unist-builder";
 import { visitParents, SKIP, CONTINUE, EXIT } from "unist-util-visit-parents";
@@ -34,14 +36,54 @@ import {
 } from "../utils/index.mjs";
 
 const dirUserAssets = "user-assets";
+const fileData = "poko.json";
+const fileHash = ".hash";
+const projectDirPublic = "public";
 
-const probeFile = async (_fileObject) => {
-  let fileObject = _fileObject;
+const projectDirData = "src/_data";
+const projectFileData = `${projectDirData}/${fileData}`;
+const systemDirData = `${process.cwd()}/${projectDirData}`;
+const systemFileData = `${process.cwd()}/${projectFileData}`;
+
+const projectDirHash = projectDirData;
+const projectFileHash = `${projectDirData}/${fileHash}`;
+const systemDirHash = `${process.cwd()}/${projectDirHash}`;
+const systemFileHash = `${process.cwd()}/${projectFileHash}`;
+
+const projectDirUserAssets1 = `${projectDirPublic}/${dirUserAssets}`;
+const projectDirUserAssets2 = `${projectDirData}/${dirUserAssets}`;
+const systemDirUserAssets1 = `${process.cwd()}/${projectDirUserAssets1}`;
+const systemDirUserAssets2 = `${process.cwd()}/${projectDirUserAssets2}`;
+// const projectFileUserAssets = `${projectDirData}/${fileUserAssets}`;
+// const systemFileUserAssets = `${process.cwd()}/${projectFileUserAssets}`;
+
+const param = process.argv[3];
+const DEBUG = param === "DEBUG";
+
+const probeFile = async (fileObject) => {
   try {
     const { url: _, ...probe } = await probeImageSize(fileObject.originalUrl);
+    // console.log({ probe });
     return { ...fileObject, ...probe };
   } catch (error) {
     // console.error(error);
+    return fileObject;
+  }
+};
+
+const probeHeaders = async (fileObject) => {
+  try {
+    const _f = await fetch(fileObject.originalUrl);
+    const headers = _f.headers;
+    const length = headers.get("content-length");
+    const mime = headers.get("content-type");
+    const etag = headers.get("etag");
+    const _last_modified = headers.get("last-modified");
+    const last_modified = new Date(_last_modified).toISOString();
+    // console.log({ length, mime, etag, last_modified });
+
+    return { ...fileObject, length, mime, etag, last_modified };
+  } catch (error) {
     return fileObject;
   }
 };
@@ -64,7 +106,31 @@ export default async function (astroConfig) {
   let rootID = rootId();
   let root;
 
+  let pokoPrev = {};
+  if (existsSync(systemFileData)) {
+    const _pokoPrev = await fs.readFile(systemFileData);
+    const pokoPrevString = _pokoPrev.toString();
+    pokoPrev = JSON.parse(pokoPrevString);
+  }
+
   const _allRawPages = await getAllNotionPages();
+
+  //
+  // SKIP FETCH IF CONTENT HAS NOT CHANGED
+  //
+  const allLastEditedTimes = _allRawPages.map(
+    ({ last_edited_time }) => last_edited_time
+  );
+
+  const contentHashPrev = pokoPrev?.cache?.hash;
+  const contentHash = hash(allLastEditedTimes);
+
+  if (contentHash === contentHashPrev && !DEBUG) {
+    console.log(`\nCONTENT HASN'T CHANGED UNTIL LAST FETCH - SKIPING!\n`);
+    return;
+  } else {
+    console.log(`\nCONTENT HAS CHANGED - PROCESSING...\n`);
+  }
 
   // TODO: skip everything if the content hasn't changes
   // [ ] check if data json and .cache exists, if not, go ahead
@@ -141,7 +207,9 @@ export default async function (astroConfig) {
   const tree = mapAST(notionTree, function (_node, index, OriginalParent) {
     const { children, ...raw } = _node;
 
-    let type, role;
+    let type,
+      role,
+      files = [];
 
     if (raw.type === "root") {
       type = "root";
@@ -185,9 +253,15 @@ export default async function (astroConfig) {
           // Transform page properties.
           const prop = transformProp([key, val], role);
           // Save files in our global 'allFiles' array
-          if (val.type === "files" && Array.isArray(prop.files)) {
-            node.data.files.push(...prop.files);
-            allFiles.push(...prop.files);
+          if (val.type === "files" && !prop._definition) {
+            const commons = {
+              last_edited_time: raw.last_edited_time,
+              blockId: raw.id,
+            };
+            const _filesTemp = _get(prop, key, []);
+            const filesTemp = _filesTemp.map((f) => ({ ...f, ...commons }));
+            files.push(...filesTemp);
+            allFiles.push(...filesTemp);
           }
           return prop;
         })) ||
@@ -216,6 +290,7 @@ export default async function (astroConfig) {
         inlinePlainText,
         // We keep a copy of the raw Notion properties on a prop called 'raw'
         props: { raw: raw.properties, title: codeName, ...props },
+        files,
         inlineMd,
         md,
         // MDXExportsSelf,
@@ -254,24 +329,25 @@ export default async function (astroConfig) {
       //
       // Construct path from ancestors -> the closest page is enough since tree is traversed from parent to children and modified in place
       //
-      // if (node.data.codeName.startsWith("_")) {
-      //   node.data.path = null;
-      // } else {
-      for (let i = ancestors.length - 1; i >= 0; i--) {
-        const a = ancestors[i];
-        if (
-          a.type === "page"
-          // && !a.data.codeName.startsWith("_")
-        ) {
-          // closestParentPage = node;
-          node.data.path = [a.data.path, node.data.path]
-            .filter((z) => z) // remove empty paths e.g. the 'index' page to avoid leading or double  '/'
-            .join("/");
-          // nodes are visited from parent to children so only the first parent page (in reverse order) is necessary
-          i = -1;
+      if (node.data.codeName.startsWith("_")) {
+        node.data.path = null;
+      } else {
+        for (let i = ancestors.length - 1; i >= 0; i--) {
+          const a = ancestors[i];
+          if (
+            a.type === "page" &&
+            //
+            !a.data.codeName.startsWith("_")
+          ) {
+            // closestParentPage = node;
+            node.data.path = [a.data.path, node.data.path]
+              .filter((z) => z) // remove empty paths e.g. the 'index' page to avoid leading or double  '/'
+              .join("/");
+            // nodes are visited from parent to children so only the first parent page (in reverse order) is necessary
+            i = -1;
+          }
         }
       }
-      // }
 
       //
       // merge props from parents to current page
@@ -344,17 +420,79 @@ export default async function (astroConfig) {
     node.data.emoji = emoji;
   });
 
+  // Read poko.files
+  // const dirPathFile = `${dirUserAssets}`;
+  // const filePathFile = `${projectDirData}/${fileHash}`;
+  // const systemDirPathFile = `${process.cwd()}/${dirPathFile}`;
+  // const systemfilePathFile = `${process.cwd()}/${filePathFile}`;
+
+  let filesPrev = pokoPrev?.files || [];
+
   // TODO: improve this. For example create a map of the downloads and the last modified date
   allFiles = await Promise.all(
     allFiles.map(async (_f) => {
-      const f = await probeFile(_f);
-      await downloadFile(f);
-      if (f.extension === ".zip") {
-        await extractZip(f);
+      const f = {
+        ...(await probeFile(_f)),
+        ...(await probeHeaders(_f)),
+      };
+      const { last_edited_time, blockId, url, length, etag, last_modified } = f;
+      const alreadyUp = !!filesPrev.find((filePrev) => {
+        return (
+          last_edited_time === filePrev.last_edited_time &&
+          blockId === filePrev.blockId &&
+          url === filePrev.url &&
+          length === filePrev.length &&
+          etag === filePrev.etag &&
+          last_modified === filePrev.last_modified
+        );
+      });
+
+      if (alreadyUp) {
+        console.info(`File ${f.filename} already up to date`);
+        return f;
       }
+
+      const systemFileUserAssets1 = `${systemDirUserAssets1}/${f.filename}`;
+      const systemFileUserAssets2 = `${systemDirUserAssets2}/${f.filename}`;
+
+      await downloadFile(f, systemFileUserAssets1).then(async () => {
+        await copy(systemFileUserAssets1, systemFileUserAssets2).then(
+          async () => {
+            if (f.extension === ".zip") {
+              await extractZip(f, systemFileUserAssets1);
+              await extractZip(f, systemFileUserAssets2);
+            }
+          }
+        );
+      });
+
       return f;
     })
   );
+
+  // const dirPathFile = `${dirUserAssets}`;
+  // const filePathFile = `${projectDirData}/${fileHash}`;
+  // const systemDirPathFile = `${process.cwd()}/${dirPathFile}`;
+  // const systemfilePathFile = `${process.cwd()}/${filePathFile}`;
+
+  // if (existsSync(systemfilePathFile)) {
+  //   const _contentHashPrev = await fs.readFile(systemfilePathFile);
+  //   const contentHashPrev = _contentHashPrev.toString();
+
+  //   if (contentHash === contentHashPrev && !DEBUG) {
+  //     console.log(`\nCONTENT HASN'T CHANGED UNTIL LAST FETCH - SKIPING!\n`);
+  //     return;
+  //   } else {
+  //     console.log(`\nCONTENT HAS CHANGED - PROCESSING...\n`);
+  //     await fs.rm(systemfilePathFile);
+  //     await fs.writeFile(systemfilePathFile, contentHash);
+  //   }
+  // } else {
+  //   if (!existsSync(systemDirPathFile)) {
+  //     await fs.mkdir(systemDirPathFile);
+  //   }
+  //   await fs.writeFile(systemfilePathFile, contentHash);
+  // }
 
   // Replace Notion URLs for local ones
   visitParents(
@@ -452,10 +590,9 @@ export default async function (astroConfig) {
   let settings;
   visitParents(tree, ["root", "page"], (node, ancestors) => {
     // TODO HERE
-    // if (node.type === "page" && node.data.codeName.startsWith("_")) {
-    //   // do not add to pages list
-    // } else
-    if (node.type === "page") {
+    if (node.type === "page" && node.data.codeName.startsWith("_")) {
+      // do not add to pages list
+    } else if (node.type === "page") {
       const parents = ancestors
         .filter((a) => a.type === "page" || a.type === "root")
         .map(({ children, ...parent }) => parent);
@@ -465,6 +602,7 @@ export default async function (astroConfig) {
   });
 
   const poko = {
+    cache: { hash: contentHash },
     settings,
     pages,
     files: allFiles,
@@ -484,10 +622,10 @@ export default async function (astroConfig) {
   }
   await fs.writeFile(systemPathData, JSON.stringify(poko));
   // copy files to an 'src' based directory to be able to import and process them with 'astro-imagetools'
-  await copy(
-    `${process.cwd()}/public/${dirUserAssets}`,
-    `${process.cwd()}/${dir}/${dirUserAssets}`
-  );
+  // await copy(
+  //   `${process.cwd()}/public/${dirUserAssets}`,
+  //   `${process.cwd()}/${dir}/${dirUserAssets}`
+  // );
 
   // throw "Auto Exit";
 

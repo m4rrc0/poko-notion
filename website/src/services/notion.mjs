@@ -182,7 +182,7 @@ export function transformProp([_key, _val] = [], role) {
   let val = _val[type];
 
   if (role === "collection") {
-    // key = `collection.${_key}`;
+    key = `_definition.${_key}`;
     val = _val;
   } else if (type === "title" || type === "rich_text") {
     // title can be a string or a rich_text field
@@ -202,15 +202,22 @@ export function transformProp([_key, _val] = [], role) {
 
       const { filename, extension } = parseFileUrl(originalUrl);
       const url = `/${dirUserAssets}/${filename}`;
+      // if (key.match("jsonld")) {
+      //   return url;
+      // }
       return { originalUrl, filename, extension, url };
     });
+  } else if (type === "date") {
+    // if (val?.start && !val?.end && !val?.time_zone) {
+    //   val = val?.start;
+    // }
   } else if (type === "relation") {
+    // console.log({ type, key, _val, val });
     // TODO: transform link OR have the page data in directly?
   } else if (type) {
     // TODO: handle more types
     // val = _val[type];
     //
-    // console.log({ type, key, _val, val });
   }
 
   // ?? TODO: map notion prop types to own types???
@@ -225,7 +232,36 @@ export function transformProp([_key, _val] = [], role) {
   return { [key]: val };
 }
 
-// TODO HERE
+export const transformJsonld = (_jsonld) => {
+  if (typeof _jsonld !== "object" || Array.isArray(_jsonld)) {
+    return _jsonld;
+  }
+
+  return Object.entries(_jsonld).reduce((prev, [key, _val]) => {
+    let val = _val;
+    const transformVal = (value) => {
+      if (value?.start) {
+        return value.start;
+      } // a date
+      if (value?.originalUrl) {
+        return value.url;
+      } // an image or file
+      return value;
+    };
+
+    if (Array.isArray(val)) {
+      val = val.map(transformVal);
+    } else {
+      val = transformVal(val);
+    }
+
+    return {
+      ...prev,
+      [key]: val,
+    };
+  }, {});
+};
+
 export async function notionBlockToMd(block) {
   let inlineMd;
   switch (block.type) {
@@ -271,9 +307,6 @@ export async function notionBlockToMd(block) {
     case "quote":
     case "divider":
     case "callout":
-      inlineMd = await n2m.blockToMarkdown(block);
-      break;
-
     default:
       inlineMd = await n2m.blockToMarkdown(block);
       break;
@@ -349,15 +382,15 @@ export async function toMdx(mdString, debugString) {
   return { MDXContent, exports };
 }
 
-export async function extractZip(fileObject) {
+export async function extractZip(fileObject, systemFile) {
   const { originalUrl, filename, extension, url } = fileObject;
-  const projectPathToFile = url.replace("/", "public/");
-  const systemPathToFile = `${process.cwd()}/${projectPathToFile}`;
-  const systemPathToDir = systemPathToFile.replace(`/${filename}`, "");
+  // const projectPathToFile = url.replace("/", "public/");
+  // const systemFile = `${process.cwd()}/${projectPathToFile}`;
+  const systemDir = systemFile.replace(`/${filename}`, "");
 
   // Async version
-  const zip = new StreamZip.async({ file: systemPathToFile });
-  const count = await zip.extract(null, systemPathToDir);
+  const zip = new StreamZip.async({ file: systemFile });
+  const count = await zip.extract(null, systemDir);
   console.info(`Extracted ${count} entries from ${filename}`);
   await zip.close();
 
@@ -366,20 +399,20 @@ export async function extractZip(fileObject) {
   });
 }
 
-export async function downloadFile(fileObject) {
+export async function downloadFile(fileObject, systemFile) {
   const { originalUrl, filename, extension, url } = fileObject;
-  const projectPathToFile = url.replace("/", "public/");
-  const systemPathToFile = `${process.cwd()}/${projectPathToFile}`;
+  // const projectPathToFile = url.replace("/", "public/");
+  // const systemPathToFile = `${process.cwd()}/${projectPathToFile}`;
   // const projectPathToFile = `${projectPathToDownloadDir}/${filename}`;
-  const systemPathToDir = systemPathToFile.replace(`/${filename}`, "");
-  // console.log({ systemPathToFile, systemPathToDir });
+  const systemDir = systemFile.replace(`/${filename}`, "");
+  // console.log({ systemFile, systemDir });
 
   const downloader = new Downloader({
-    url: originalUrl, //If the file name already exists, a new file with the name 200MB1.zip is created.
-    directory: systemPathToDir, //This folder will be created, if it doesn't exist.
+    url: originalUrl, //If the file name already exists, a new file with the name followed by '1' is created.
+    directory: systemDir, //This folder will be created, if it doesn't exist.
     fileName: filename,
     // cloneFiles: false, //This will cause the downloader to re-write an existing file.
-    skipExistingFileName: true, // completely skip downloading a file, when a file with the same name already exists
+    // skipExistingFileName: true, // completely skip downloading a file, when a file with the same name already exists
   });
   try {
     await downloader.download(); //Downloader.download() returns a promise.
@@ -393,33 +426,33 @@ export async function downloadFile(fileObject) {
 }
 
 // const downloadFilesAndExtract = async (
-const downloadFilesAndExtract = (
-  fileObjects,
-  downloadDir,
-  purgePassed = true
-) => {
-  // TODO: see if working with [astro-imagetools](https://github.com/RafidMuhymin/astro-imagetools), reply to https://discord.com/channels/830184174198718474/855126849159954492/958605946177863730
+// const downloadFilesAndExtract = (
+//   fileObjects,
+//   downloadDir,
+//   purgePassed = true
+// ) => {
+//   // TODO: see if working with [astro-imagetools](https://github.com/RafidMuhymin/astro-imagetools), reply to https://discord.com/channels/830184174198718474/855126849159954492/958605946177863730
 
-  let purge = purgePassed;
-  const projectPathToDownloadDir = `public/${downloadDir}`;
+//   let purge = purgePassed;
+//   const projectPathToDownloadDir = `public/${downloadDir}`;
 
-  if (purge) {
-    // await overWriteFileOrDir(projectPathToDownloadDir, undefined);
-    overWriteFileOrDir(projectPathToDownloadDir, undefined);
-  }
+//   if (purge) {
+//     // await overWriteFileOrDir(projectPathToDownloadDir, undefined);
+//     overWriteFileOrDir(projectPathToDownloadDir, undefined);
+//   }
 
-  // await Promise.all(
-  //   blocks.map(async (block) => {
-  fileObjects.map(
-    (fileObject) => {
-      downloadFile(fileObject, () => {
-        if (extension === ".zip") {
-          extractZip(fileObject);
-        }
-      });
-    } //)
-  );
-};
+//   // await Promise.all(
+//   //   blocks.map(async (block) => {
+//   fileObjects.map(
+//     (fileObject) => {
+//       downloadFile(fileObject, () => {
+//         if (extension === ".zip") {
+//           extractZip(fileObject);
+//         }
+//       });
+//     } //)
+//   );
+// };
 
 // async function overWriteFileOrDir(
 function overWriteFileOrDir(projectPathToTarget, str, removeOnly = false) {

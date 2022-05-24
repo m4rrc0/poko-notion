@@ -23,10 +23,16 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "serve": "astro preview"
+    "serve": "astro preview",
+    "clean": "rm -rf public/user-assets src/_data",
+    "fetch:once": "./src/fetch-ahead/fetch-once.mjs",
+    "fetch:watch": "./src/fetch-ahead/watch.mjs -- 120000",
+    "dev:watch": "concurrently --kill-others \"npm run dev\" \"npm run fetch:watch\""
   },
   "devDependencies": {
-    "astro": "^1.0.0-beta.19"
+    "astro": "^1.0.0-beta.19",
+    "concurrently": "^7.2.1",
+    "object-hash": "^3.0.0"
   },
   "dependencies": {
     "@astrojs/preact": "^0.1.2",

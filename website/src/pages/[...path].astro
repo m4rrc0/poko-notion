@@ -6,7 +6,7 @@ import { visitParents } from "unist-util-visit-parents";
 import { notionHelpers, deepMergePropsSelf, deepMergePropsAllPages } from "@utils";
 import * as layouts from '@layouts'
 import pokoComponents from '../components/components.jsx'
-import { toMdx } from '@services/notion.mjs'
+import { toMdx, transformJsonld } from '@services/notion.mjs'
 import poko from '@poko'
 
 import { renderImg } from "astro-imagetools/api";
@@ -32,7 +32,7 @@ export async function getStaticPaths() {
   // const poko = await import(systemPath)
   const { settings: _settings, pages: _pages, files: _files, paths, websiteTree } = poko
 
-  const _userAssets = await Astro.glob('../_data/user-assets/*.(jpeg|png|webp|gif|avif|tiff|JPEG|PNG|WebP|GIF|AVIF|TIFF)');
+  const _userAssets = await Astro.glob('../_data/user-assets/*.(jpeg|jpg|png|webp|gif|avif|tiff|JPEG|JPG|PNG|WebP|GIF|AVIF|TIFF)');
   const userAssets = _userAssets?.map(a => a.default)
   const files = _files.map(f => {
     const name = f.filename.replace(f.extension, '')
@@ -75,10 +75,14 @@ export async function getStaticPaths() {
 
 const { settings, pages, page, files, paths, websiteTree } = Astro.props;
 const markdownRenderer = page?.data?.props?.markdownRenderer?.toLowerCase() || 'mdx'
+const _jsonld = page?.data?.props?.jsonld
+let jsonld = typeof _jsonld === "object" ? transformJsonld(_jsonld) : _jsonld
+
+const ldString = jsonld ? JSON.stringify(jsonld) : ""
 
 ---
 
 {markdownRenderer === 'mdx' && <MDXPage  {...Astro.props} />}
 {markdownRenderer === 'astro' && <AstroPage  {...Astro.props} />}
 
-
+{ldString ? <script type="application/ld+json" set:html={ldString}></script> : null}
