@@ -392,11 +392,12 @@ export async function extractZip(fileObject, systemFile) {
   const zip = new StreamZip.async({ file: systemFile });
   const count = await zip.extract(null, systemDir);
   console.info(`Extracted ${count} entries from ${filename}`);
-  await zip.close();
 
   zip.on("error", (err) => {
     console.error(`Error unziping file ${filename}.\n`, err);
   });
+
+  await zip.close();
 }
 
 export async function downloadFile(fileObject, systemFile) {
@@ -412,7 +413,8 @@ export async function downloadFile(fileObject, systemFile) {
     directory: systemDir, //This folder will be created, if it doesn't exist.
     fileName: filename,
     // cloneFiles: false, //This will cause the downloader to re-write an existing file.
-    // skipExistingFileName: true, // completely skip downloading a file, when a file with the same name already exists
+    skipExistingFileName: true, // completely skip downloading a file, when a file with the same name already exists
+    maxAttempts: 3,
   });
   try {
     await downloader.download(); //Downloader.download() returns a promise.

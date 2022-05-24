@@ -74,7 +74,7 @@ const probeFile = async (fileObject) => {
 const probeHeaders = async (fileObject) => {
   try {
     const _f = await fetch(fileObject.originalUrl);
-    const headers = _f.headers;
+    const headers = await _f.headers;
     const length = headers.get("content-length");
     const mime = headers.get("content-type");
     const etag = headers.get("etag");
@@ -388,11 +388,17 @@ export default async function (astroConfig) {
     if (image) node.data.raw.image[raw.image.type].url = image.url;
     if (file) node.data.raw.file[raw.file.type].url = file.url;
 
+    // if (node.data.raw?.file?.file?.url === "/user-assets/test.zip") {
+    //   console.log(node.data);
+    // }
+
     node.data.files = node.data.files || [];
     Promise.all(
       Object.entries({ featuredImage, cover, icon, image, file }).map(
         async ([key, _fileObject]) => {
           let fileObject = _fileObject;
+
+          // TODO: Seems to be a problem with Notion API retrieving deleted File and Image blocks
 
           if (fileObject) {
             node.data[key] = fileObject; // assign data like: node.data.cover = cover;
@@ -431,6 +437,7 @@ export default async function (astroConfig) {
   // TODO: improve this. For example create a map of the downloads and the last modified date
   allFiles = await Promise.all(
     allFiles.map(async (_f) => {
+      // const f = await probeFile(_f);
       const f = {
         ...(await probeFile(_f)),
         ...(await probeHeaders(_f)),
@@ -455,16 +462,14 @@ export default async function (astroConfig) {
       const systemFileUserAssets1 = `${systemDirUserAssets1}/${f.filename}`;
       const systemFileUserAssets2 = `${systemDirUserAssets2}/${f.filename}`;
 
-      await downloadFile(f, systemFileUserAssets1).then(async () => {
-        await copy(systemFileUserAssets1, systemFileUserAssets2).then(
-          async () => {
-            if (f.extension === ".zip") {
-              await extractZip(f, systemFileUserAssets1);
-              await extractZip(f, systemFileUserAssets2);
-            }
-          }
-        );
-      });
+      // console.log(`-----FILE: ${f.filename}`);
+
+      await downloadFile(f, systemFileUserAssets1);
+      await copy(systemFileUserAssets1, systemFileUserAssets2);
+      if (f.extension === ".zip") {
+        await extractZip(f, systemFileUserAssets1);
+        await extractZip(f, systemFileUserAssets2);
+      }
 
       return f;
     })

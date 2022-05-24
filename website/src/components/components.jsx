@@ -387,6 +387,34 @@ const components = {
   CollectionArticleFeaturedImage,
   CollectionArticleHeading,
   CollectionArticleFooter,
+  CollectionPageHeader: ({ components, poko, ...props }) => {
+    const ld = props.jsonld || {};
+    const featuredImage = props.featuredImage || ld.image?.[0] || ld.image;
+    const author = props.author || ld.author.name;
+    const datePublished = props.datePublished || ld.datePublished?.start;
+
+    return (
+      <header class="stack" style="--gap: 1rem;">
+        {featuredImage ? (
+          <components.ImgLazy {...{ poko, ...featuredImage }} />
+        ) : null}
+        {datePublished || author ? (
+          <div class="cluster">
+            <div style="--gap: 1ch;">
+              {datePublished ? (
+                <components.p>
+                  On <time datetime={datePublished}>{datePublished}</time>
+                </components.p>
+              ) : null}
+              {author ? <components.p>by {author}</components.p> : null}
+            </div>
+          </div>
+        ) : null}
+        {props.title && <h1>{props.title}</h1>}
+        <hr />
+      </header>
+    );
+  },
   // Columns: ({ blockId }) => {
   //   const block = getBlock(websiteTree, blockId);
   //   return block?.children?.length ? (

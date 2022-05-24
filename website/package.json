@@ -26,7 +26,7 @@
     "serve": "astro preview",
     "clean": "rm -rf public/user-assets src/_data",
     "fetch:once": "./src/fetch-ahead/fetch-once.mjs",
-    "fetch:watch": "./src/fetch-ahead/watch.mjs -- 120000",
+    "fetch:watch": "./src/fetch-ahead/watch.mjs",
     "dev:watch": "concurrently --kill-others \"npm run dev\" \"npm run fetch:watch\""
   },
   "devDependencies": {
