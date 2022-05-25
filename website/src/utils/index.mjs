@@ -90,6 +90,7 @@ export const deepMergePropsAllPages = (_arrOfPropsObj) => {
         _children,
         title,
         metadata,
+        jsonld,
         components,
         ...restProps
       } = propsObj;
@@ -97,13 +98,15 @@ export const deepMergePropsAllPages = (_arrOfPropsObj) => {
       const currentProps = deepmerge.all([
         { ...prev_children }, // merge the _children prop from a parent
         (isSettings || isSelf) && metadata ? { metadata } : {}, // only merge current metadata with the global ones from settings
+        (isSettings || isSelf) && jsonld ? { jsonld } : {}, // only merge current jsonld with the global ones from settings
         // these next props are not merged. Only keep the value of the current page.
         isSelf && raw ? { raw } : {},
         isSelf && self ? { self } : {},
         isSelf && _self ? { _self } : {},
         isSelf && _children ? { _children } : {},
-        isSelf && title ? { title } : {},
+        // isSelf && title ? { title } : {},
         // Everything else is merged
+        title ? { title } : {},
         restProps,
       ]);
 

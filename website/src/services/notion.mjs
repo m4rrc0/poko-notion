@@ -296,6 +296,7 @@ export async function notionBlockToMd(block) {
     case "toggle":
     // inlineMd = ``;
     // break;
+    case "synced_block":
     case "paragraph":
     case "image":
     case "file":
@@ -672,7 +673,7 @@ export async function getBlockChildrenRecursively(
 
       //   let blockId;
       let children;
-      const syncedBlockId = block?.syncedblock?.synced_from?.block_id;
+      const syncedBlockId = block?.synced_block?.synced_from?.block_id;
       const linkToPageId =
         block?.link_to_page?.page_id || block?.link_to_page?.database_id;
       const childPageTitle =

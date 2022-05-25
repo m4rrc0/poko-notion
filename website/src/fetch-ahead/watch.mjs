@@ -3,8 +3,10 @@
 import fetchAhead from "./index.mjs";
 
 async function start() {
-  const param = process.argv[3];
-  const delay = param ? +param : 120000;
+  let param = process.argv[3] || process.argv[2];
+  param = param ? param.replace(/-/g, "") : 120000;
+  param = +param;
+  const delay = Number.isNaN(param) ? 120000 : param;
   const delaySec = delay / 1000;
 
   console.log(`\nWATCHING STARTS - delay: ${delaySec}s\n`);

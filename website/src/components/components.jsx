@@ -185,7 +185,7 @@ const CollectionArticleHeading = ({ components, href, heading }) => {
 const CollectionArticleFooter = ({ components, datePublished, author }) => {
   return datePublished || author ? (
     <div class="cluster">
-      <div>
+      <div style="--gap: 1ch;">
         {datePublished ? (
           <components.p>
             On <time datetime={datePublished}>{datePublished}</time>
@@ -339,9 +339,13 @@ const components = {
           const ld = propsItem.jsonld || {};
           const featuredImage =
             propsItem.featuredImage || ld.image?.[0] || ld.image;
-          const author = propsItem.author || ld.author.name;
+          const author = propsItem.author || ld.author.name || ld.author;
           const datePublished =
-            propsItem.datePublished || ld.datePublished?.start;
+            propsItem.datePublished ||
+            ld.datePublished?.start ||
+            ld.datePublished;
+          const dateModified =
+            propsItem.dateModified || ld.dateModified?.start || ld.dateModified;
 
           // console.log({
           //   propsItem,

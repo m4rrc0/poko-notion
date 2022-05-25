@@ -355,6 +355,11 @@ export default async function (astroConfig) {
       const parentsProps =
         ancestors.map((a) => a.data?.props).filter((z) => z) || [];
 
+      // take up the title of the parent by default. It is assumed that this is the homepage
+      if (node.data.props.title === "index") {
+        node.data.props.title = undefined;
+      }
+
       node.data.props = deepMergePropsAllPages([
         ...parentsProps,
         node.data.props,
