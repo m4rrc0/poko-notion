@@ -89,6 +89,7 @@ export const deepMergePropsAllPages = (_arrOfPropsObj) => {
         _self,
         _children,
         title,
+        // href,
         metadata,
         jsonld,
         components,
@@ -104,6 +105,7 @@ export const deepMergePropsAllPages = (_arrOfPropsObj) => {
         isSelf && self ? { self } : {},
         isSelf && _self ? { _self } : {},
         isSelf && _children ? { _children } : {},
+        // isSelf && href ? { href } : {},
         // isSelf && title ? { title } : {},
         // Everything else is merged
         title ? { title } : {},

@@ -299,9 +299,9 @@ const components = {
       })
       .map((block) => {
         const page = block.children[0];
-        if (page.data.role === "collection") {
-          // console.log(page.data.raw.title);
-        }
+        // if (page.data.role === "collection") {
+        //   // console.log(page.data.raw.title);
+        // }
         return {
           title: page?.data.props.title,
           codeName: page?.data.codeName,

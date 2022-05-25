@@ -344,11 +344,11 @@ export default async function (astroConfig) {
               .filter((z) => z) // remove empty paths e.g. the 'index' page to avoid leading or double  '/'
               .join("/");
             // nodes are visited from parent to children so only the first parent page (in reverse order) is necessary
+
             i = -1;
           }
         }
       }
-      node.data.props.href = "/" + node.data.path;
 
       //
       // merge props from parents to current page
@@ -365,6 +365,9 @@ export default async function (astroConfig) {
         ...parentsProps,
         node.data.props,
       ]);
+
+      // Just to avoid confusion with path that has no leading '/'
+      node.data.props.href = "/" + node.data.path;
 
       //
       // Save a MAP of all the pages with the Notion ID, Notion URLs and our local path
@@ -610,6 +613,10 @@ export default async function (astroConfig) {
       const page = { ...node, parents };
       pages.push(page);
     } else settings = node;
+  });
+
+  pages.forEach((p) => {
+    console.log(p.data.props.title, p.data.path, p.data.props.href);
   });
 
   const poko = {
