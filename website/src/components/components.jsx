@@ -305,7 +305,7 @@ const components = {
         return {
           title: page?.data.props.title,
           codeName: page?.data.codeName,
-          href: `/${page.data.path}`,
+          href: page?.data.props.href,
         };
       });
     const index = topLevelPages.find((p) => p.codeName === "index");
@@ -318,7 +318,7 @@ const components = {
     const page = poko.pages.find((p) => p.data.id === pageId);
     return (
       <a
-        href={`/${page.data.path}`}
+        href={page?.data.props.href}
         children={page.data.props.title || page.data.codeName}
       />
     );
@@ -361,7 +361,7 @@ const components = {
                 components,
                 poko,
                 featuredImage,
-                href: item.data.path,
+                href: propsItem.href,
                 heading: propsItem.title,
                 datePublished,
                 author,
@@ -373,7 +373,7 @@ const components = {
               <components.CollectionArticleHeading
                 {...{
                   components,
-                  href: item.data.path,
+                  href: propsItem.href,
                   heading: propsItem.title,
                 }}
               />

@@ -348,6 +348,7 @@ export default async function (astroConfig) {
           }
         }
       }
+      node.data.props.href = "/" + node.data.path;
 
       //
       // merge props from parents to current page
