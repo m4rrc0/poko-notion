@@ -1,2 +1,2 @@
 [build]
-  command = "cd website && npm run build"
+  base = "website/"
