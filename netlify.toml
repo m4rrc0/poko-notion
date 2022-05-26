@@ -1,10 +1,2 @@
 [build]
   base = "website/"
-  publish = "dist/"
-  command = "npm run build"
-  environment = { NODE_VERSION = "16" }
-[context.production]
-  branch = "prod"
-[template.environment]
-  NOTION_TOKEN = "secret_XXX from your Notion Integration"
-  SITE = "the url of your production website"
