@@ -1,5 +1,5 @@
 [build]
-  publish = "dist/"
+  publish = "website/dist/"
   command = "npm run build:netlify"
   environment = { NODE_VERSION = "16" }
 [template.environment]
