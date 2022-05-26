@@ -615,10 +615,6 @@ export default async function (astroConfig) {
     } else settings = node;
   });
 
-  pages.forEach((p) => {
-    console.log(p.data.props.title, p.data.path, p.data.props.href);
-  });
-
   const poko = {
     cache: { hash: contentHash },
     settings,
