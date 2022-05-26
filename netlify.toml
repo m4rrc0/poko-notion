@@ -1,2 +1,7 @@
 [build]
+  publish = "dist/"
   command = "npm run build:netlify"
+  environment = { NODE_VERSION = "16" }
+[template.environment]
+  NOTION_TOKEN = "secret_XXX from your Notion Integration"
+  SITE = "the url of your production website"
