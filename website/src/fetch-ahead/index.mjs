@@ -164,6 +164,10 @@ export default async function (astroConfig) {
       : p?.parent?.type === "workspace"
   );
 
+  if (!root) {
+    throw "No settings page found.\nHave you shared your Notion pages with your integration?";
+  }
+
   rootID = root.id;
 
   const notionTree = u("root", root, root.children);

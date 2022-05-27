@@ -339,13 +339,17 @@ const components = {
           const ld = propsItem.jsonld || {};
           const featuredImage =
             propsItem.featuredImage || ld.image?.[0] || ld.image;
-          const author = propsItem.author || ld.author.name || ld.author;
+          const author = propsItem.author || ld.author?.name || ld.author;
           const datePublished =
+            propsItem.datePublished?.start ||
             propsItem.datePublished ||
             ld.datePublished?.start ||
             ld.datePublished;
           const dateModified =
-            propsItem.dateModified || ld.dateModified?.start || ld.dateModified;
+            propsItem.dateModified?.start ||
+            propsItem.dateModified ||
+            ld.dateModified?.start ||
+            ld.dateModified;
 
           // console.log({
           //   propsItem,
