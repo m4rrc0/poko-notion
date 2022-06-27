@@ -152,11 +152,12 @@ const CollectionWrapper = ({ children, ...props }) => (
     <div>{children}</div>
   </div>
 );
-const CollectionArticle = ({ children }) => {
+const CollectionArticle = ({ id, children }) => {
   return (
     <components.article
       {...{
         article: {
+          ["data-id"]: id,
           class: "box shadowy",
           style: "max-width: calc(var(--width-column) * 1.5)",
         },
@@ -362,6 +363,7 @@ const components = {
           return item ? (
             <components.CollectionArticle
               {...{
+                id: itemId,
                 components,
                 poko,
                 featuredImage,
@@ -421,6 +423,129 @@ const components = {
         {props.title && <h1>{props.title}</h1>}
         <hr />
       </header>
+    );
+  },
+  SearchBar: ({
+    collectionId: _collectionId,
+    id,
+    placeholder = "search",
+    components,
+    poko,
+    ...props
+  }) => {
+    const collection = poko.collections.filter((page) => {
+      return (
+        page.data.id.replaceAll("-", "") === _collectionId?.replaceAll("-", "")
+      );
+    })[0];
+    const collectionId = collection.data.id;
+    // const scriptId = `searchbar-script-${collectionId}${id ? `-${id}` : ""}`;
+    const styleId = `searchbar-style-${collectionId}${id ? `-${id}` : ""}`;
+    const inputId = `searchbar-input-${collectionId}${id ? `-${id}` : ""}`;
+
+    if (!collection) return null;
+
+    // const [inputTerm, setInputTerm] = preactHooks.useState("");
+
+    // const stylesForChildren = preactHooks.useMemo(() => {
+    //   const doNotMatchSelector = collection.children
+    //     .filter((article) => {
+    //       // const { id, status, codeName, props } = article?.data || {}
+    //       // console.log(article);
+    //       if (article?.data?.codeName.match(inputTerm)) {
+    //         return false;
+    //       }
+    //       return true;
+    //     })
+    //     .map((child) => `[data-id="${child.data.id}"]`)
+    //     .join(",");
+
+    //   return doNotMatchSelector ? `${doNotMatchSelector}{display: none;}` : "";
+    // }, [inputTerm, collection.children]);
+
+    const childrenMatchingArray = collection.children?.map((child) => {
+      const str = [child.data.codeName].join(" ").toLowerCase();
+      return {
+        id: child.data.id,
+        str,
+      };
+    });
+    return (
+      <>
+        <style
+          id={styleId}
+          // dangerouslySetInnerHTML={{
+          //   __html: stylesForChildren,
+          // }}
+        />
+        <div
+          style={
+            {
+              // width: 500,
+              // maxWidth: "100%",
+              // margin: "auto",
+              // padding: rhythm(1 / 2),
+            }
+          }
+        >
+          {placeholder && (
+            <label
+              htmlFor={inputId}
+              style={{
+                position: "absolute",
+                left: "-10000px",
+                top: "auto",
+                width: 1,
+                height: 1,
+                overflow: "hidden",
+              }}
+            >
+              {placeholder || ""}
+            </label>
+          )}
+          <input
+            id={inputId}
+            name="search"
+            type="text"
+            placeholder={placeholder || ""}
+            // value={inputTerm}
+            // onInput={(e) => {
+            //   console.log(e);
+            //   setInputTerm(e.target.value);
+            // }}
+            data-matching-array={JSON.stringify(childrenMatchingArray)}
+            oninput={`
+              const stylesEl = document.getElementById("${styleId}");
+
+              const val = this.value.toLowerCase();
+              const matchingArray = JSON.parse(this.dataset.matchingArray);
+              const doNotMatchSelector = matchingArray
+                .filter(({str}) => !str.match(val))
+                .map(({id}) => '[data-id="' + id + '"]')
+                .join(",");
+              
+              stylesEl.innerHTML = doNotMatchSelector ? doNotMatchSelector + '{display: none;}' : '';
+            `}
+          />
+          {/* <script
+            id={scriptId}
+            dangerouslySetInnerHTML={{
+              __html: `
+            const source = document.getElementById('${inputId}');
+            // const result = document.getElementById('result');
+
+            const inputHandler = function(e) {
+              console.log(e.target.value)
+              // result.innerHTML = e.target.value;
+            }
+
+            source.addEventListener('input', inputHandler);
+            source.addEventListener('propertychange', inputHandler); // for IE8
+            `,
+            }}
+          /> */}
+        </div>
+      </>
     );
   },
   // Columns: ({ blockId }) => {

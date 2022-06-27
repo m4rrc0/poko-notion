@@ -57,8 +57,7 @@ const systemDirUserAssets2 = `${process.cwd()}/${projectDirUserAssets2}`;
 // const projectFileUserAssets = `${projectDirData}/${fileUserAssets}`;
 // const systemFileUserAssets = `${process.cwd()}/${projectFileUserAssets}`;
 
-const param = process.argv[3];
-const DEBUG = param === "DEBUG";
+const DEBUG = process.argv.find((str) => str.match("DEBUG"));
 
 const probeFile = async (fileObject) => {
   try {
@@ -605,17 +604,24 @@ export default async function (astroConfig) {
   );
 
   let pages = [];
+  let collections = [];
   let settings;
   visitParents(tree, ["root", "page"], (node, ancestors) => {
-    // TODO HERE
-    if (node.type === "page" && node.data.codeName.startsWith("_")) {
-      // do not add to pages list
-    } else if (node.type === "page") {
+    if (node.type === "page") {
       const parents = ancestors
         .filter((a) => a.type === "page" || a.type === "root")
         .map(({ children, ...parent }) => parent);
       const page = { ...node, parents };
-      pages.push(page);
+
+      if (node.type === "page" && node.data.codeName.startsWith("_")) {
+        // do not add to pages list
+      } else {
+        pages.push(page);
+      }
+
+      if (page.data.role === "collection") {
+        collections.push(page);
+      }
     } else settings = node;
   });
 
@@ -623,6 +629,7 @@ export default async function (astroConfig) {
     cache: { hash: contentHash },
     settings,
     pages,
+    collections,
     files: allFiles,
     paths: allPaths,
     websiteTree: tree,

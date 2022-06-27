@@ -30,7 +30,7 @@ export async function getStaticPaths() {
   // console.log({ userAssets })
 
   // const poko = await import(systemPath)
-  const { settings: _settings, pages: _pages, files: _files, paths, websiteTree } = poko
+  const { settings: _settings, pages: _pages, collections, files: _files, paths, websiteTree } = poko
 
   const _userAssets = await Astro.glob('../_data/user-assets/*.(jpeg|jpg|png|webp|gif|avif|tiff|JPEG|JPG|PNG|WebP|GIF|AVIF|TIFF)');
   const userAssets = _userAssets?.map(a => a.default)
@@ -66,14 +66,14 @@ export async function getStaticPaths() {
 
   return pages.filter(page => page.data.props.status !== 'draft').map(page => {
 
-    return { params: { path: page.data.path === '' ? undefined : page.data.path }, props: { settings, pages, page, files, paths, websiteTree } }
+    return { params: { path: page.data.path === '' ? undefined : page.data.path }, props: { settings, collections, pages, page, files, paths, websiteTree } }
   })
 
   // return [{ params: { path: undefined }, props: {  } }]
 }
 
 
-const { settings, pages, page, files, paths, websiteTree } = Astro.props;
+const { settings, collections, pages, page, files, paths, websiteTree } = Astro.props;
 const markdownRenderer = page?.data?.props?.markdownRenderer?.toLowerCase() || 'mdx'
 const _jsonld = page?.data?.props?.jsonld
 let jsonld = typeof _jsonld === "object" ? transformJsonld(_jsonld) : _jsonld

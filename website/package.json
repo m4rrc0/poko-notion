@@ -19,6 +19,7 @@
   },
   "author": "m4rrc0 (https://www.m4rr.co/)",
   "scripts": {
+    "dev:debug": "astro dev -- DEBUG",
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",

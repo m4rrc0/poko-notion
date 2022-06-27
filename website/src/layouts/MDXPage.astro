@@ -6,7 +6,7 @@ import pokoComponents, { addProps } from '../components/components.jsx'
 // import { toMdx } from '@services/notion.mjs'
 
 const { pathname } = Astro.canonicalURL;
-const { settings, pages, page, files, paths, websiteTree } = Astro.props;
+const { settings, collections, pages, page, files, paths, websiteTree } = Astro.props;
 
 const { headString } = settings.data || {}
 const { MDXContent, props: { metadata, components: __components, ...__props } } = page.data || {}
@@ -15,7 +15,7 @@ const { MDXContent, props: { metadata, components: __components, ...__props } } 
 const _components = {...pokoComponents, ...__components}
 const _props = {
   ...__props,
-  poko: { settings, pages, page, files, paths, websiteTree, utils: { ...notionHelpers } },
+  poko: { settings, collections, pages, page, files, paths, websiteTree, utils: { ...notionHelpers } },
   components: _components,
   metadata,
 }
