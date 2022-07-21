@@ -74,9 +74,9 @@ const ImgLazy = ({
   ...props
 }) => {
   const file = files.find((f) => f.url === (_src || url));
-  // console.log({ file });
   const { width, height } = file || {};
   const src = file?.src || _src || url;
+  // console.log({ file, src, url, _src });
   return (
     <div {...{ class: "img-lazy-wrapper" }}>
       <img
@@ -172,9 +172,9 @@ const CollectionArticleFeaturedImage = ({
   poko,
   featuredImage,
 }) => {
-  return featuredImage ? (
-    <components.ImgLazy {...{ poko, ...featuredImage }} />
-  ) : null;
+  // console.log({ featuredImage });
+  const fi = featuredImage?.[0] || featuredImage;
+  return fi ? <components.ImgLazy {...{ poko, ...fi }} /> : null;
 };
 const CollectionArticleHeading = ({ components, href, heading }) => {
   return href && heading ? (
@@ -334,61 +334,70 @@ const components = {
 
     return collection ? (
       <components.CollectionWrapper>
-        {collection?.children?.map(({ data: { id: itemId } }) => {
-          const item = poko.pages.find((p) => p.data.id === itemId);
-          const { components: componentsItem, ...propsItem } = item.data.props;
-          const ld = propsItem.jsonld || {};
-          const featuredImage =
-            propsItem.featuredImage || ld.image?.[0] || ld.image;
-          const author = propsItem.author || ld.author?.name || ld.author;
-          const datePublished =
-            propsItem.datePublished?.start ||
-            propsItem.datePublished ||
-            ld.datePublished?.start ||
-            ld.datePublished;
-          const dateModified =
-            propsItem.dateModified?.start ||
-            propsItem.dateModified ||
-            ld.dateModified?.start ||
-            ld.dateModified;
+        {collection?.children
+          ?.filter(
+            ({
+              data: {
+                props: { status },
+              },
+            }) => typeof status === "undefined" || status === "published"
+          )
+          .map(({ data: { id: itemId } }) => {
+            const item = poko.pages.find((p) => p.data.id === itemId);
+            const { components: componentsItem, ...propsItem } =
+              item.data.props;
+            const ld = propsItem.jsonld || {};
+            const featuredImage =
+              propsItem.featuredImage || ld.image?.[0] || ld.image;
+            const author = propsItem.author || ld.author?.name || ld.author;
+            const datePublished =
+              propsItem.datePublished?.start ||
+              propsItem.datePublished ||
+              ld.datePublished?.start ||
+              ld.datePublished;
+            const dateModified =
+              propsItem.dateModified?.start ||
+              propsItem.dateModified ||
+              ld.dateModified?.start ||
+              ld.dateModified;
 
-          // console.log({
-          //   propsItem,
-          //   author,
-          //   datePublished,
-          //   // components
-          //   // featuredImage,
-          // });
+            // console.log({
+            //   propsItem,
+            //   author,
+            //   datePublished,
+            //   // components
+            //   // featuredImage,
+            // });
 
-          return item ? (
-            <components.CollectionArticle
-              {...{
-                id: itemId,
-                components,
-                poko,
-                featuredImage,
-                href: propsItem.href,
-                heading: propsItem.title,
-                datePublished,
-                author,
-              }}
-            >
-              <components.CollectionArticleFeaturedImage
-                {...{ components, poko, featuredImage }}
-              />
-              <components.CollectionArticleHeading
+            return item ? (
+              <components.CollectionArticle
                 {...{
+                  id: itemId,
                   components,
+                  poko,
+                  featuredImage,
                   href: propsItem.href,
                   heading: propsItem.title,
+                  datePublished,
+                  author,
                 }}
-              />
-              <components.CollectionArticleFooter
-                {...{ components, datePublished, author }}
-              />
-            </components.CollectionArticle>
-          ) : null;
-        })}
+              >
+                <components.CollectionArticleFeaturedImage
+                  {...{ components, poko, featuredImage }}
+                />
+                <components.CollectionArticleHeading
+                  {...{
+                    components,
+                    href: propsItem.href,
+                    heading: propsItem.title,
+                  }}
+                />
+                <components.CollectionArticleFooter
+                  {...{ components, datePublished, author }}
+                />
+              </components.CollectionArticle>
+            ) : null;
+          })}
       </components.CollectionWrapper>
     ) : null;
   },
