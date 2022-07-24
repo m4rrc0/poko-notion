@@ -5,7 +5,7 @@ import { SkeletonPage } from '@layouts'
 import pokoComponents, { addProps } from '../components/components.jsx'
 // import { toMdx } from '@services/notion.mjs'
 
-const { pathname } = Astro.canonicalURL;
+const { href, pathname } = Astro.canonicalURL;
 const { settings, collections, pages, page, files, paths, websiteTree } = Astro.props;
 
 const { headString } = settings.data || {}
@@ -18,6 +18,8 @@ const _props = {
   poko: { settings, collections, pages, page, files, paths, websiteTree, utils: { ...notionHelpers } },
   components: _components,
   metadata,
+  pathname,
+  Astro
 }
 
 const components = addProps(_components, _props)

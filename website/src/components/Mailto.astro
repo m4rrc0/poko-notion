@@ -1,0 +1,60 @@
+---
+// import { protectEmail } from 'protect-email';
+// import Mailto from './Mailto.svelte'
+// import { destructureEmail } from '@utils'
+
+const { email, target="_blank", rel="noopener noreferrer", referrerpolicy="no-referrer" } = Astro.props || {}
+// const emailEncoded = email && protectEmail(email);
+// const mailtoEncoded = email && protectEmail(`mailto:${email}`);
+const [pre, post] = email.split('@')
+const preHalf = Math.ceil(pre.length / 2);
+const pre1 = pre.substr(0, preHalf)
+const pre2 = pre.substr(preHalf)
+const postHalf = Math.ceil(post.length / 2);
+const post1 = post.substr(0, postHalf)
+const post2 = post.substr(postHalf)
+
+// const hasSlot = Astro.slots.has('default')
+
+// <Mailto client:visible em={destructureEmail(email)} {target} {rel} {referrerpolicy} />
+// <Fragment set:html={`<a href="${mailtoEncoded}">${emailEncoded}</a>`} />
+// onclick="window.location.href = 'mailto:' + this.dataset.name + '@' + this.dataset.domain + '.' + this.dataset.tld; return false;"
+---
+
+<a href="/email-error/"
+    {target}
+    {rel}
+    {referrerpolicy}
+    data-mtobf="true"
+    style={`--mtobf-pre1: "${pre1}"; --mtobf-pre2: "${pre2}"; --mtobf-post1: "${post1}"; --mtobf-post2: "${post2}";`}
+    onmouseover={`mtdeobf(this);`}
+    onfocus={`mtdeobf(this);`}
+/>
+
+<script defer is:global>
+    function mtdeobf(self) {
+        function varFromCss(prop) {
+          return self.style
+            .getPropertyValue(`--mtobf-${prop}`)
+            .trim()
+            .replaceAll('"', '')
+        }
+        var pre1 = varFromCss('pre1')
+        var pre2 = varFromCss('pre2')
+        var post1 = varFromCss('post1')
+        var post2 = varFromCss('post2')
+
+        self.dataset.mtobf = "false";
+        self.innerHTML = [pre1, pre2, '&#', '64;', post1, post2].join('');
+        self.href = ['mai', 'lt', 'o:', pre1, pre2, '@', post1, post2].join('');
+    }
+</script>
+
+<style is:global>
+a[data-mtobf="true"]:after {
+    content: "[adresse masquée]";
+    content: var(--mtobf-pre1) var(--mtobf-pre2) "@" var(--mtobf-post1) var(--mtobf-post2);
+}
+</style>
+
+

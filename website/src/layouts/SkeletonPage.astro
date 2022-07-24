@@ -125,9 +125,10 @@ const bodyChildren = mapObjectToArray(bodyChildrenRaw, 'bodyChildrenRaw')
       <Anon {...el}>{children}</Anon>
     ))}
 
-    <link rel="stylesheet" href="/user-styles.css" />
-
     <slot name="head" />
+    
+    <!-- Important to put user-css after head insert because we could import css libraries and need to overwrite them -->
+    <link rel="stylesheet" href="/user-styles.css" />
 
     <Fragment set:html={`<style class="style-page" type="text/css">${style}</style>`} />
 

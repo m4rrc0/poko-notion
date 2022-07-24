@@ -148,7 +148,7 @@ const Nav = ({ index, pages }) => {
 
 // const CollectionWrapper = (props) => <div class="grid" {...props} />;
 const CollectionWrapper = ({ children, ...props }) => (
-  <div class="grid" style="--width-column: 15rem; --gap: 1rem;" {...props}>
+  <div class="grid" style="--width-column: 14rem; --gap: 1rem;" {...props}>
     <div>{children}</div>
   </div>
 );
@@ -158,8 +158,11 @@ const CollectionArticle = ({ id, children }) => {
       {...{
         article: {
           ["data-id"]: id,
-          class: "box shadowy",
-          style: "max-width: calc(var(--width-column) * 1.5)",
+          // class: "box shadowy",
+          class:
+            "box no-border stack split-after-1 card-shadow breakout-clickable",
+          style:
+            "max-width: calc(var(--width-column) * 2); border-radius: 6px;",
         },
       }}
     >
@@ -179,7 +182,11 @@ const CollectionArticleFeaturedImage = ({
 const CollectionArticleHeading = ({ components, href, heading }) => {
   return href && heading ? (
     <components.h2>
-      <components.a {...{ href }}>{heading}</components.a>
+      <components.a
+        {...{ href, a: { class: `clickable`, style: `color: inherit;` } }}
+      >
+        {heading}
+      </components.a>
     </components.h2>
   ) : null;
 };
@@ -264,12 +271,98 @@ const components = {
   // nav: Nav,
 
   // --- SPECIAL COMPONENTS --- //
-  wrapper: ({ children, components, ...props }) => {
+  // wrapper: ({ children, components, ...props }) => {
+  //   return (
+  //     <>
+  //       <components.Menu {...{ components, ...props }} />
+  //       <components.main {...{ components, ...props }}>
+  //         <components.header {...{ components, ...props }} />
+  //         {children}
+  //       </components.main>
+  //       <components.footer />
+  //     </>
+  //   );
+  // },
+  wrapper: ({ children, components, poko, ...props }) => {
+    const {
+      title,
+      description,
+      jsonld,
+      featuredImage,
+      gallery,
+      price,
+      _definition,
+      Astro,
+    } = props || {};
+    const ID = props.id || props.ID || props.sku || props.title;
+    const titleConcat = props.titleConcat?.string;
+    const ld = jsonld || {};
+    const fi =
+      featuredImage?.[0] || featuredImage || ld?.image?.[0] || ld?.image;
+
+    const priceSymbol =
+      _definition?.price?.number?.format === "euro" ? "€" : "?";
+
+    const canonicalUrl = Astro.canonicalURL.href;
+
+    // console.log({ canonicalUrl });
     return (
       <>
         <components.Menu {...{ components, ...props }} />
-        <components.header {...{ components, ...props }} />
         <components.main {...{ components, ...props }}>
+          {titleConcat && (
+            <div
+              class="with-sidebar right"
+              style="--side-width: 25rem; --content-min: 30%;"
+            >
+              <div>
+                <div class="stack">
+                  {fi ? <components.ImgLazy {...{ poko, ...fi }} /> : null}
+                  {gallery?.[0] && (
+                    <div class="grid" style="--width-column: 4rem;">
+                      <div>
+                        {gallery.map((i) => (
+                          <components.ImgLazy
+                            {...{
+                              poko,
+                              ...i,
+                              // img: { style: `max-width: 10rem;` },
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <components.header {...{ components, ...props }}>
+                    {titleConcat && <h1>{titleConcat}</h1>}
+                  </components.header>
+                  {price && (
+                    <div class="cluster">
+                      <div>
+                        <p style="font-size: 1.17rem;">
+                          {price}
+                          {priceSymbol}
+                        </p>
+                        <button
+                          class="snipcart-add-item"
+                          data-item-name={titleConcat}
+                          data-item-id={ID}
+                          data-item-price={price}
+                          data-item-description={description}
+                          data-item-image={fi.url}
+                          data-item-url={canonicalUrl}
+                        >
+                          Ajouter au panier
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {children}
         </components.main>
         <components.footer />
@@ -280,8 +373,8 @@ const components = {
     return (
       <>
         <components.Menu {...{ components, ...props }} />
-        <components.header {...{ components, ...props }} />
         <components.main {...{ components, ...props }}>
+          <components.header {...{ components, ...props }} />
           {children}
         </components.main>
         <components.footer />
@@ -360,6 +453,7 @@ const components = {
               propsItem.dateModified ||
               ld.dateModified?.start ||
               ld.dateModified;
+            const heading = propsItem.titleConcat?.string;
 
             // console.log({
             //   propsItem,
@@ -377,7 +471,8 @@ const components = {
                   poko,
                   featuredImage,
                   href: propsItem.href,
-                  heading: propsItem.title,
+                  // heading: propsItem.title,
+                  heading,
                   datePublished,
                   author,
                 }}
@@ -389,7 +484,8 @@ const components = {
                   {...{
                     components,
                     href: propsItem.href,
-                    heading: propsItem.title,
+                    // heading: propsItem.title,
+                    heading,
                   }}
                 />
                 <components.CollectionArticleFooter
@@ -440,6 +536,7 @@ const components = {
     placeholder = "search",
     components,
     poko,
+    searchbar,
     ...props
   }) => {
     const collection = poko.collections.filter((page) => {
@@ -487,16 +584,7 @@ const components = {
           //   __html: stylesForChildren,
           // }}
         />
-        <div
-          style={
-            {
-              // width: 500,
-              // maxWidth: "100%",
-              // margin: "auto",
-              // padding: rhythm(1 / 2),
-            }
-          }
-        >
+        <div {...searchbar} class={`searchbar ${searchbar?.class || ""}`}>
           {placeholder && (
             <label
               htmlFor={inputId}
