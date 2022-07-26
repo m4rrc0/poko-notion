@@ -353,6 +353,7 @@ const components = {
                           data-item-description={description}
                           data-item-image={fi.url}
                           data-item-url={canonicalUrl}
+                          data-item-has-taxes-included
                         >
                           Ajouter au panier
                         </button>
