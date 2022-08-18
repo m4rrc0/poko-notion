@@ -9,9 +9,12 @@ import pokoComponents from '../components/components.jsx'
 import { toMdx, transformJsonld } from '@services/notion.mjs'
 import poko from '@poko'
 
-import { renderImg } from "astro-imagetools/api";
+// import { renderImg } from "astro-imagetools/api";
 
-const { MDXPage, AstroPage } = layouts
+const {
+  MDXPage,
+  // AstroPage
+} = layouts
 
 export async function getStaticPaths() {
   // const filePath = "src/_data/poko.json";
@@ -83,6 +86,6 @@ const ldString = jsonld ? JSON.stringify(jsonld) : ""
 ---
 
 {markdownRenderer === 'mdx' && <MDXPage  {...Astro.props} />}
-{markdownRenderer === 'astro' && <AstroPage  {...Astro.props} />}
+<!-- {markdownRenderer === 'astro' && <AstroPage  {...Astro.props} />} -->
 
 {ldString ? <script type="application/ld+json" set:html={ldString}></script> : null}

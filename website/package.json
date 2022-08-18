@@ -23,9 +23,10 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
+    "build:debug": "NODE_OPTIONS=--max-old-space-size=8192 astro build -- DEBUG",
     "preview": "astro preview",
     "serve": "astro preview",
-    "clean": "rm -rf public/user-assets src/_data",
+    "clean": "rm -rf dist public/user-assets src/_data",
     "fetch:once": "./src/fetch-ahead/fetch-once.mjs",
     "fetch:watch": "./src/fetch-ahead/watch.mjs",
     "dev:watch": "concurrently --kill-others --names DEV,FETCH -c cyan,yellow -P npm:dev \"npm run fetch:watch -- $npm_config_delay\""
