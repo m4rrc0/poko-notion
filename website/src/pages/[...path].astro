@@ -42,9 +42,6 @@ export async function getStaticPaths() {
     const src = userAssets.find(a => a.match(`${name}@`))
     return {...f, src}
   })
-  // console.log({ _files })
-
-  // process.env.USERASSETS = files
 
   // TODO: loop recursively on tree instead of computing parent pages multiple times
 
@@ -83,9 +80,18 @@ let jsonld = typeof _jsonld === "object" ? transformJsonld(_jsonld) : _jsonld
 
 const ldString = jsonld ? JSON.stringify(jsonld) : ""
 
+
+// const posts = await Astro.glob('./*.mdx');
+// const posts = await Astro.glob('../**/*.mdx')
+// console.log(posts)
+// console.log(Astro.props.page.data.MDXContent)
+// {posts.map(post => <p>{post.title}</p>)}
+// const Content = Astro.props.page.data.MDXContent
 ---
 
-{markdownRenderer === 'mdx' && <MDXPage  {...Astro.props} />}
 <!-- {markdownRenderer === 'astro' && <AstroPage  {...Astro.props} />} -->
 
+{markdownRenderer === 'mdx' && <MDXPage  {...Astro.props} />}
 {ldString ? <script type="application/ld+json" set:html={ldString}></script> : null}
+
+<!-- <div>hello</div> -->

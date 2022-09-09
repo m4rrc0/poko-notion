@@ -5,7 +5,7 @@ import Debug from 'astro/debug';
 import { notionHelpers } from "@utils";
 import { SkeletonPage } from '@layouts'
 
-const { pathname } = Astro.canonicalURL;
+const { href, pathname } = new URL(Astro.url.pathname, Astro.site);
 // console.log({ pathname })
 const { settings, pages, page, files, paths, websiteTree } = Astro.props;
 

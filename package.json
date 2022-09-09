@@ -12,6 +12,7 @@
     "start": "npm start --workspace=website",
     "build": "npm run build --workspace=website",
     "build:netlify": "cd website && npm run build",
+    "build:debug": "npm run build:debug --workspace=website",
     "preview": "npm run preview --workspace=website",
     "serve": "npm run serve --workspace=website",
     "clean": "npm run clean --workspace=website",

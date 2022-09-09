@@ -303,9 +303,8 @@ const components = {
     const priceSymbol =
       _definition?.price?.number?.format === "euro" ? "€" : "?";
 
-    const canonicalUrl = Astro.canonicalURL.href;
+    const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 
-    // console.log({ canonicalUrl });
     return (
       <>
         <components.Menu {...{ components, ...props }} />
@@ -352,7 +351,7 @@ const components = {
                           data-item-price={price}
                           data-item-description={description}
                           data-item-image={fi.url}
-                          data-item-url={canonicalUrl}
+                          data-item-url={canonicalUrl.href}
                           data-item-has-taxes-included
                         >
                           Ajouter au panier

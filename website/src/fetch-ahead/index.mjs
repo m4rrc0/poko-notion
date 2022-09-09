@@ -262,6 +262,7 @@ export default async function (astroConfig) {
               blockId: raw.id,
             };
             const _filesTemp = _get(prop, key, []);
+            // console.log({ _filesTemp, prop, key });
             const filesTemp = _filesTemp.map((f) => ({ ...f, ...commons }));
             files.push(...filesTemp);
             allFiles.push(...filesTemp);

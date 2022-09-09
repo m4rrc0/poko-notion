@@ -8,6 +8,8 @@ import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 // import mdx from "@mdx-js/rollup";
 import preact from "@astrojs/preact";
 import { astroImageTools } from "astro-imagetools";
+import mdx from "@astrojs/mdx";
+import image from "@astrojs/image";
 import fetchAhead from "@m4rrc0/astro-fetch-ahead";
 
 // @type-check enabled!
@@ -28,6 +30,8 @@ export default defineConfig({
     preact(),
     fetchAhead(),
     astroImageTools,
+    mdx(),
+    image(),
   ],
   vite: {
     // assetsInclude: ["**/*.png"],
