@@ -11,6 +11,7 @@ import { is } from "unist-util-is";
 // import { filter as filterAST } from "unist-util-filter";
 import deepmerge from "deepmerge";
 import probeImageSize from "probe-image-size";
+import pLimit from "p-limit";
 import {
   rootId,
   filesInfo,
@@ -34,6 +35,9 @@ import {
   deepMergePropsSelf,
   deepMergePropsAllPages,
 } from "../utils/index.mjs";
+
+// limit async functions concurrency
+const concurrencyLimit = pLimit(8);
 
 const dirUserAssets = "user-assets";
 const fileData = "poko.json";
@@ -141,19 +145,21 @@ export default async function (astroConfig) {
 
   let allRawPages = _allRawPages.map(transformRawPage).filter((z) => z); // computed values: _title, _codeName, _titlePropName, _parentId
   allRawPages = await Promise.all(
-    allRawPages.map(async (p) => {
-      // We don't provide 'allRawPages' so that link_to_page & child_page blocks are not populated
-      const _c = await getBlockChildrenRecursively(p);
-      const _md = treeToMd(_c);
-      const { exports: _MDXExportsSelf } = await toMdx(_md);
+    allRawPages.map((p) =>
+      concurrencyLimit(async () => {
+        // We don't provide 'allRawPages' so that link_to_page & child_page blocks are not populated
+        const _c = await getBlockChildrenRecursively(p);
+        const _md = treeToMd(_c);
+        const { exports: _MDXExportsSelf } = await toMdx(_md);
 
-      return {
-        ...p,
-        children: _c,
-        _md,
-        _MDXExportsSelf,
-      };
-    })
+        return {
+          ...p,
+          children: _c,
+          _md,
+          _MDXExportsSelf,
+        };
+      })
+    )
   );
 
   // Find root of website
