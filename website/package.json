@@ -31,6 +31,10 @@
     "fetch:watch": "./src/fetch-ahead/watch.mjs",
     "dev:watch": "concurrently --kill-others --names DEV,FETCH -c cyan,yellow -P npm:dev \"npm run fetch:watch -- $npm_config_delay\""
   },
+  "overrides": {
+    "react": "npm:@preact/compat@latest",
+    "react-dom": "npm:@preact/compat@latest"
+  },
   "dependencies": {
     "@astrojs/image": "^0.3.4",
     "@astrojs/mdx": "^0.10.0",

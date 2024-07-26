@@ -1,31 +1,45 @@
 ---
 // import Debug from 'astro/debug';
 import { notionHelpers } from "@utils";
-import { SkeletonPage } from '@layouts'
-import pokoComponents, { addProps } from '../components/components.jsx'
+import { SkeletonPage } from "@layouts";
+import pokoComponents, { addProps } from "../components/components.jsx";
 // import { toMdx } from '@services/notion.mjs'
 
 const { href, pathname } = new URL(Astro.url.pathname, Astro.site);
 
-const { settings, collections, pages, page, files, paths, websiteTree } = Astro.props;
+const { settings, collections, pages, page, files, paths, websiteTree } =
+  Astro.props;
 
-const { headString } = settings.data || {}
-const { MDXContent, props: { metadata, components: __components, ...__props } } = page.data || {}
+const { headString } = settings.data || {};
+const {
+  MDXContent,
+  props: { metadata, components: componentsUser, ...__props },
+} = page.data || {};
 // console.log({__props})
 
-const _components = {...pokoComponents, ...__components}
+const componentsFullMerged = { ...pokoComponents, ...componentsUser };
 const _props = {
   ...__props,
-  poko: { settings, collections, pages, page, files, paths, websiteTree, utils: { ...notionHelpers } },
-  components: _components,
+  poko: {
+    settings,
+    collections,
+    pages,
+    page,
+    files,
+    paths,
+    websiteTree,
+    utils: { ...notionHelpers },
+  },
+  components: componentsFullMerged,
   metadata,
   pathname,
-  Astro
-}
+  Astro,
+};
 
-const components = addProps(_components, _props)
-const props = { ..._props, components }
+console.log({ componentsFullMerged });
 
+const components = addProps(componentsFullMerged, _props);
+const props = { ..._props, components };
 ---
 
 <SkeletonPage {...{ path: pathname, ..._props, metadata, components}}>
@@ -33,4 +47,3 @@ const props = { ..._props, components }
 
   <MDXContent {...props} />
 </SkeletonPage>
-
